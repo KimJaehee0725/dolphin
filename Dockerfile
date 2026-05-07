@@ -12,6 +12,7 @@ ARG USERNAME=appuser
 ARG GIT_NAME="Codex User"
 ARG GIT_EMAIL="codex@example.com"
 ARG TRACK_RESEARCH_HISTORY_REF=main
+ARG CMUX_SKILLS_REF=main
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=en_US.UTF-8
@@ -293,6 +294,11 @@ function y() {
 EOF
 
 RUN mkdir -p "${HOME}/.codex/skills" "${HOME}/.claude/skills"
+
+RUN curl -fsSL https://raw.githubusercontent.com/manaflow-ai/cmux/main/skills.sh -o /tmp/cmux-skills.sh \
+ && bash /tmp/cmux-skills.sh --ref "${CMUX_SKILLS_REF}" --dest "${HOME}/.codex/skills" \
+ && bash /tmp/cmux-skills.sh --ref "${CMUX_SKILLS_REF}" --dest "${HOME}/.claude/skills" \
+ && rm -f /tmp/cmux-skills.sh
 
 RUN git clone --depth=1 --branch "${TRACK_RESEARCH_HISTORY_REF}" https://github.com/KimJaehee0725/track-research-history.git /tmp/track-research-history \
  && mkdir -p "${HOME}/.codex/skills/track-research-history" "${HOME}/.claude/skills/track-research-history" \
