@@ -1,0 +1,8 @@
+.DS_Store
+
+# Local runtime secrets. Commit config/runtime.env.example instead.
+config/runtime*.env
+!config/runtime.env.example
+config/.tokens
+config/github/token
+config/huggingface/token

@@ -1,0 +1,5 @@
+# Keep docs/examples, but never commit credentials.
+/runtime*.env
+/.tokens
+/github/token
+/huggingface/token
