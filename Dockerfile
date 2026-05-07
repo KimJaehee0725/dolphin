@@ -95,11 +95,13 @@ ENV KEEP_ZSHRC=yes
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 RUN uv python install 3.12 \
+ && uv venv "${HOME}/.venv" --python 3.12 \
+ && uv pip install --python "${HOME}/.venv/bin/python" pip numpy \
  && mkdir -p "${HOME}/.local/bin" \
- && ln -sf "$(uv python find 3.12)" "${HOME}/.local/bin/python" \
- && ln -sf "$(uv python find 3.12)" "${HOME}/.local/bin/python3"
-
-RUN uv pip install --python "${HOME}/.local/bin/python3" numpy
+ && ln -sf "${HOME}/.venv/bin/python" "${HOME}/.local/bin/python" \
+ && ln -sf "${HOME}/.venv/bin/python" "${HOME}/.local/bin/python3" \
+ && ln -sf "${HOME}/.venv/bin/pip" "${HOME}/.local/bin/pip" \
+ && ln -sf "${HOME}/.venv/bin/pip" "${HOME}/.local/bin/pip3"
 
 RUN mkdir -p "${NPM_CONFIG_PREFIX}" \
  && npm config set prefix "${NPM_CONFIG_PREFIX}" \
@@ -107,7 +109,7 @@ RUN mkdir -p "${NPM_CONFIG_PREFIX}" \
  && codex --version
 
 RUN curl -fsSL https://claude.ai/install.sh | bash \
- && claude --version || true
+ && claude --version
 
 RUN EZA_URL="$(curl -fsSL https://api.github.com/repos/eza-community/eza/releases/latest | jq -r '.assets[] | select(.name | test("x86_64-unknown-linux-gnu.tar.gz$")) | .browser_download_url' | head -n1)" \
  && curl -fsSL "${EZA_URL}" -o /tmp/eza.tar.gz \
