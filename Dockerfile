@@ -13,6 +13,8 @@ ARG GIT_NAME="Codex User"
 ARG GIT_EMAIL="codex@example.com"
 ARG TRACK_RESEARCH_HISTORY_REF=main
 ARG CMUX_SKILLS_REF=main
+ARG NVIM_CONFIG_REPO=https://github.com/KimJaehee0725/nvim-config.git
+ARG NVIM_CONFIG_REF=main
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=en_US.UTF-8
@@ -131,8 +133,45 @@ RUN arch="$(uname -m)" \
  && install -m 0755 /tmp/yazi-*/ya "${HOME}/.local/bin/ya" \
  && rm -rf /tmp/yazi.zip /tmp/yazi-*
 
+RUN arch="$(uname -m)" \
+ && case "${arch}" in \
+      x86_64) nvim_archive="nvim-linux-x86_64.tar.gz"; nvim_dir="nvim-linux-x86_64" ;; \
+      *) echo "Unsupported architecture for Neovim binary: ${arch}" && exit 1 ;; \
+    esac \
+ && curl -fsSL "https://github.com/neovim/neovim/releases/latest/download/${nvim_archive}" -o /tmp/nvim.tar.gz \
+ && tar -xzf /tmp/nvim.tar.gz -C /tmp \
+ && rm -rf "${HOME}/.local/share/nvim-linux-x86_64" \
+ && mkdir -p "${HOME}/.local/share" "${HOME}/.local/bin" \
+ && mv "/tmp/${nvim_dir}" "${HOME}/.local/share/nvim-linux-x86_64" \
+ && ln -sfn "${HOME}/.local/share/nvim-linux-x86_64/bin/nvim" "${HOME}/.local/bin/nvim" \
+ && rm -f /tmp/nvim.tar.gz \
+ && nvim --version | sed -n '1p'
+
+RUN git clone --depth=1 --branch "${NVIM_CONFIG_REF}" "${NVIM_CONFIG_REPO}" /tmp/nvim-config \
+ && mkdir -p "${HOME}/.config" \
+ && rm -rf "${HOME}/.config/nvim" \
+ && cp -a /tmp/nvim-config "${HOME}/.config/nvim" \
+ && rm -rf "${HOME}/.config/nvim/.git" /tmp/nvim-config
+
+RUN uv tool install ruff \
+ && STYLUA_URL="$(curl -fsSL https://api.github.com/repos/JohnnyMorganz/StyLua/releases/latest | jq -r '.assets[] | select(.name == "stylua-linux-x86_64-musl.zip" or .name == "stylua-linux-x86_64.zip") | .browser_download_url' | head -n1)" \
+ && test -n "${STYLUA_URL}" \
+ && curl -fsSL "${STYLUA_URL}" -o /tmp/stylua.zip \
+ && unzip -q /tmp/stylua.zip -d /tmp/stylua \
+ && install -m 0755 /tmp/stylua/stylua "${HOME}/.local/bin/stylua" \
+ && npm install -g tree-sitter-cli \
+ && rm -rf /tmp/stylua /tmp/stylua.zip \
+ && ruff --version \
+ && stylua --version \
+ && tree-sitter --version
+
+RUN nvim --headless '+Lazy! sync' +qa \
+ && nvim --headless '+MasonToolsInstallSync' +qa \
+ && nvim --headless '+TSInstallSync bash c cpp css html javascript json lua markdown markdown_inline python query regex tsx typescript vim vimdoc yaml' +qa \
+ && nvim --headless '+lua print("nvim-start-ok")' +qa
+
 RUN git config --global init.defaultBranch main \
- && git config --global core.editor vim \
+ && git config --global core.editor nvim \
  && git config --global pull.rebase false \
  && git config --global user.name "${GIT_NAME}" \
  && git config --global user.email "${GIT_EMAIL}"

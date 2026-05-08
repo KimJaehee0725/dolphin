@@ -20,6 +20,8 @@ IMAGE_NAME="${IMAGE_NAME:?IMAGE_NAME must be set in ${RUNTIME_CONFIG_FILE}}"
 DOCKERFILE_PATH="${DOCKERFILE_PATH:?DOCKERFILE_PATH must be set in ${RUNTIME_CONFIG_FILE}}"
 BUILD_CONTEXT_DIR="${BUILD_CONTEXT_DIR:?BUILD_CONTEXT_DIR must be set in ${RUNTIME_CONFIG_FILE}}"
 NO_CACHE="${NO_CACHE:?NO_CACHE must be set in ${RUNTIME_CONFIG_FILE}}"
+NVIM_CONFIG_REPO="${NVIM_CONFIG_REPO:-https://github.com/KimJaehee0725/nvim-config.git}"
+NVIM_CONFIG_REF="${NVIM_CONFIG_REF:-main}"
 
 resolve_repo_path() {
   local path="$1"
@@ -65,6 +67,8 @@ docker build \
   --build-arg USERNAME="${HOST_USER}" \
   --build-arg GIT_NAME="${GIT_NAME}" \
   --build-arg GIT_EMAIL="${GIT_EMAIL}" \
+  --build-arg NVIM_CONFIG_REPO="${NVIM_CONFIG_REPO}" \
+  --build-arg NVIM_CONFIG_REF="${NVIM_CONFIG_REF}" \
   -t "${IMAGE_NAME}" \
   -f "${DOCKERFILE_PATH}" \
   "${BUILD_CONTEXT_DIR}"

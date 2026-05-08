@@ -5,6 +5,7 @@ Docker-based development environment for research and coding agents.
 ## What It Includes
 
 - CUDA 12.2 Ubuntu base image with Node.js, Python 3.12 via `uv`, GitHub CLI, Docker CLI, tmux, zsh, and common terminal tools.
+- Neovim installed from the official latest stable release, configured from `https://github.com/KimJaehee0725/nvim-config`.
 - OpenAI Codex CLI and Claude Code.
 - Shared agent skill directories:
   - `~/.codex/skills`
