@@ -11,10 +11,6 @@ ARG GID=1000
 ARG USERNAME=appuser
 ARG GIT_NAME="Codex User"
 ARG GIT_EMAIL="codex@example.com"
-ARG TRACK_RESEARCH_HISTORY_REF=main
-ARG CMUX_SKILLS_REF=main
-ARG NVIM_CONFIG_REPO=https://github.com/KimJaehee0725/nvim-config.git
-ARG NVIM_CONFIG_REF=main
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=en_US.UTF-8
@@ -133,26 +129,6 @@ RUN arch="$(uname -m)" \
  && install -m 0755 /tmp/yazi-*/ya "${HOME}/.local/bin/ya" \
  && rm -rf /tmp/yazi.zip /tmp/yazi-*
 
-RUN arch="$(uname -m)" \
- && case "${arch}" in \
-      x86_64) nvim_archive="nvim-linux-x86_64.tar.gz"; nvim_dir="nvim-linux-x86_64" ;; \
-      *) echo "Unsupported architecture for Neovim binary: ${arch}" && exit 1 ;; \
-    esac \
- && curl -fsSL "https://github.com/neovim/neovim/releases/latest/download/${nvim_archive}" -o /tmp/nvim.tar.gz \
- && tar -xzf /tmp/nvim.tar.gz -C /tmp \
- && rm -rf "${HOME}/.local/share/nvim-linux-x86_64" \
- && mkdir -p "${HOME}/.local/share" "${HOME}/.local/bin" \
- && mv "/tmp/${nvim_dir}" "${HOME}/.local/share/nvim-linux-x86_64" \
- && ln -sfn "${HOME}/.local/share/nvim-linux-x86_64/bin/nvim" "${HOME}/.local/bin/nvim" \
- && rm -f /tmp/nvim.tar.gz \
- && nvim --version | sed -n '1p'
-
-RUN git clone --depth=1 --branch "${NVIM_CONFIG_REF}" "${NVIM_CONFIG_REPO}" /tmp/nvim-config \
- && mkdir -p "${HOME}/.config" \
- && rm -rf "${HOME}/.config/nvim" \
- && cp -a /tmp/nvim-config "${HOME}/.config/nvim" \
- && rm -rf "${HOME}/.config/nvim/.git" /tmp/nvim-config
-
 RUN uv tool install ruff \
  && STYLUA_URL="$(curl -fsSL https://api.github.com/repos/JohnnyMorganz/StyLua/releases/latest | jq -r '.assets[] | select(.name == "stylua-linux-x86_64-musl.zip" or .name == "stylua-linux-x86_64.zip") | .browser_download_url' | head -n1)" \
  && test -n "${STYLUA_URL}" \
@@ -165,13 +141,7 @@ RUN uv tool install ruff \
  && stylua --version \
  && tree-sitter --version
 
-RUN nvim --headless '+Lazy! sync' +qa \
- && nvim --headless '+MasonToolsInstallSync' +qa \
- && nvim --headless '+TSInstallSync bash c cpp css html javascript json lua markdown markdown_inline python query regex tsx typescript vim vimdoc yaml' +qa \
- && nvim --headless '+lua print("nvim-start-ok")' +qa
-
 RUN git config --global init.defaultBranch main \
- && git config --global core.editor nvim \
  && git config --global pull.rebase false \
  && git config --global user.name "${GIT_NAME}" \
  && git config --global user.email "${GIT_EMAIL}"
@@ -331,109 +301,6 @@ function y() {
 
 [[ -f "$HOME/.p10k.zsh" ]] && source "$HOME/.p10k.zsh"
 EOF
-
-RUN mkdir -p "${HOME}/.codex/skills" "${HOME}/.claude/skills"
-
-RUN curl -fsSL https://raw.githubusercontent.com/manaflow-ai/cmux/main/skills.sh -o /tmp/cmux-skills.sh \
- && bash /tmp/cmux-skills.sh --ref "${CMUX_SKILLS_REF}" --dest "${HOME}/.codex/skills" \
- && bash /tmp/cmux-skills.sh --ref "${CMUX_SKILLS_REF}" --dest "${HOME}/.claude/skills" \
- && rm -f /tmp/cmux-skills.sh
-
-RUN git clone --depth=1 --branch "${TRACK_RESEARCH_HISTORY_REF}" https://github.com/KimJaehee0725/track-research-history.git /tmp/track-research-history \
- && mkdir -p "${HOME}/.codex/skills/track-research-history" "${HOME}/.claude/skills/track-research-history" \
- && cp -a /tmp/track-research-history/. "${HOME}/.codex/skills/track-research-history/" \
- && cp -a /tmp/track-research-history/. "${HOME}/.claude/skills/track-research-history/" \
- && rm -rf \
-      "${HOME}/.codex/skills/track-research-history/.git" \
-      "${HOME}/.claude/skills/track-research-history/.git" \
-      /tmp/track-research-history
-
-RUN mkdir -p "${HOME}/.codex/skills/paper-triage" "${HOME}/.claude/skills/paper-triage" \
- && printf '%s\n' \
-    '---' \
-    'name: paper-triage' \
-    'description: Rapidly triage NLP/ML papers and extract contribution, method, datasets, metrics, limitations, and reproducibility risks.' \
-    '---' \
-    '' \
-    'Use this skill when the user asks to read, summarize, compare, or assess an NLP/ML paper.' \
-    '' \
-    'Workflow:' \
-    '1. Identify problem and claimed contribution.' \
-    '2. Extract method, data, evaluation, and baselines.' \
-    '3. Flag reproducibility gaps and weak comparisons.' \
-    '4. End with what is truly new and what to reproduce first.' \
-    > "${HOME}/.codex/skills/paper-triage/SKILL.md" \
- && cp "${HOME}/.codex/skills/paper-triage/SKILL.md" "${HOME}/.claude/skills/paper-triage/SKILL.md"
-
-RUN mkdir -p "${HOME}/.codex/skills/experiment-planner" "${HOME}/.claude/skills/experiment-planner" \
- && printf '%s\n' \
-    '---' \
-    'name: experiment-planner' \
-    'description: Design robust NLP experiments with baselines, ablations, seeds, metrics, and stop/go criteria.' \
-    '---' \
-    '' \
-    'Use this skill when the user wants experiment design or ablation planning.' \
-    '' \
-    'Workflow:' \
-    '1. Restate the hypothesis.' \
-    '2. Define minimal baselines.' \
-    '3. Define variables and ablations.' \
-    '4. Require seeds, fixed splits, and variance reporting.' \
-    '5. End with a concise run sheet.' \
-    > "${HOME}/.codex/skills/experiment-planner/SKILL.md" \
- && cp "${HOME}/.codex/skills/experiment-planner/SKILL.md" "${HOME}/.claude/skills/experiment-planner/SKILL.md"
-
-RUN mkdir -p "${HOME}/.codex/skills/error-analysis" "${HOME}/.claude/skills/error-analysis" \
- && printf '%s\n' \
-    '---' \
-    'name: error-analysis' \
-    'description: Perform structured NLP error analysis on predictions, labels, generations, retrieval misses, and evaluation failures.' \
-    '---' \
-    '' \
-    'Use this skill when the user asks why a model failed or how to categorize failures.' \
-    '' \
-    'Workflow:' \
-    '1. Separate metric failure from product failure.' \
-    '2. Bucket representative errors.' \
-    '3. Hypothesize root causes.' \
-    '4. Propose the smallest confirming experiment.' \
-    > "${HOME}/.codex/skills/error-analysis/SKILL.md" \
- && cp "${HOME}/.codex/skills/error-analysis/SKILL.md" "${HOME}/.claude/skills/error-analysis/SKILL.md"
-
-RUN mkdir -p "${HOME}/.codex/skills/dataset-audit" "${HOME}/.claude/skills/dataset-audit" \
- && printf '%s\n' \
-    '---' \
-    'name: dataset-audit' \
-    'description: Audit NLP datasets for leakage, duplication, imbalance, annotation artifacts, and split contamination.' \
-    '---' \
-    '' \
-    'Use this skill when the user wants to inspect datasets or corpus quality.' \
-    '' \
-    'Checklist:' \
-    '1. Schema and provenance.' \
-    '2. Split leakage and near-duplicates.' \
-    '3. Class/domain/length imbalance.' \
-    '4. Annotation artifacts and cleanup priorities.' \
-    > "${HOME}/.codex/skills/dataset-audit/SKILL.md" \
- && cp "${HOME}/.codex/skills/dataset-audit/SKILL.md" "${HOME}/.claude/skills/dataset-audit/SKILL.md"
-
-RUN mkdir -p "${HOME}/.codex/skills/repro-check" "${HOME}/.claude/skills/repro-check" \
- && printf '%s\n' \
-    '---' \
-    'name: repro-check' \
-    'description: Check reproducibility for NLP/ML experiments, including seeds, environments, configs, logging, and artifact traceability.' \
-    '---' \
-    '' \
-    'Use this skill when the user wants to reproduce results or explain run-to-run variance.' \
-    '' \
-    'Checklist:' \
-    '1. Environment and versions.' \
-    '2. Config completeness.' \
-    '3. Data snapshot/version.' \
-    '4. Artifact lineage.' \
-    '5. Most likely causes of mismatch.' \
-    > "${HOME}/.codex/skills/repro-check/SKILL.md" \
- && cp "${HOME}/.codex/skills/repro-check/SKILL.md" "${HOME}/.claude/skills/repro-check/SKILL.md"
 
 # codex-plugin-cc
 # The plugin itself is prepared here, but Claude-side activation still happens inside Claude Code.
