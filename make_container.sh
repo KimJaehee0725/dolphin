@@ -40,15 +40,18 @@ HF_TOKEN="${HF_TOKEN:-}"
 HUGGINGFACE_TOKEN="${HUGGINGFACE_TOKEN:-}"
 WANDB_API_KEY="${WANDB_API_KEY:-}"
 
-# Optional, project-scoped research-memory client.  These values are only
-# paths and a profile name; private-key contents stay outside runtime.env.
-RESEARCH_MEMORY_ENABLED="${RESEARCH_MEMORY_ENABLED:-0}"
-RESEARCH_MEMORY_PROFILE="${RESEARCH_MEMORY_PROFILE:-}"
-RESEARCH_MEMORY_CLIENT_DIR="${RESEARCH_MEMORY_CLIENT_DIR:-}"
-RESEARCH_MEMORY_CONFIG="${RESEARCH_MEMORY_CONFIG:-}"
-RESEARCH_MEMORY_IDENTITY_FILE="${RESEARCH_MEMORY_IDENTITY_FILE:-}"
-RESEARCH_MEMORY_KNOWN_HOSTS="${RESEARCH_MEMORY_KNOWN_HOSTS:-}"
-RESEARCH_MEMORY_SSH_CONFIG="${RESEARCH_MEMORY_SSH_CONFIG:-}"
+# Optional, project-scoped research-memory client. A non-empty root has a
+# fixed, symlink-friendly layout; private-key contents stay outside runtime.env.
+RESEARCH_MEMORY_ROOT="${RESEARCH_MEMORY_ROOT:-}"
+RESEARCH_MEMORY_ENABLED=0
+if [[ -n "${RESEARCH_MEMORY_ROOT}" ]]; then
+  RESEARCH_MEMORY_ENABLED=1
+fi
+RESEARCH_MEMORY_CLIENT_DIR=""
+RESEARCH_MEMORY_CONFIG=""
+RESEARCH_MEMORY_IDENTITY_FILE=""
+RESEARCH_MEMORY_KNOWN_HOSTS=""
+RESEARCH_MEMORY_SSH_CONFIG=""
 ####################################
 
 RESEARCH_MEMORY_CONTAINER_DIR="/run/research-memory"
@@ -57,6 +60,7 @@ RESEARCH_MEMORY_CONTAINER_CONFIG="${RESEARCH_MEMORY_CONTAINER_DIR}/client.json"
 RESEARCH_MEMORY_CONTAINER_IDENTITY="${RESEARCH_MEMORY_CONTAINER_DIR}/id_ed25519"
 RESEARCH_MEMORY_CONTAINER_KNOWN_HOSTS="${RESEARCH_MEMORY_CONTAINER_DIR}/known_hosts"
 RESEARCH_MEMORY_CONTAINER_SSH_CONFIG="${RESEARCH_MEMORY_CONTAINER_DIR}/ssh_config"
+RESEARCH_MEMORY_LAYOUT="v2"
 
 TERM_VALUE="${TERM:-xterm-256color}"
 COLORTERM_VALUE="${COLORTERM:-truecolor}"
@@ -107,6 +111,7 @@ die() {
 absolute_research_memory_file() {
   local label="$1"
   local candidate="$2"
+  local link_target
 
   [[ -n "${candidate}" ]] || die "${label} must be set when RESEARCH_MEMORY_ENABLED=1"
   if [[ "${candidate}" == "~/"* ]]; then
@@ -116,6 +121,14 @@ absolute_research_memory_file() {
         "${candidate}" == *$'\t'* || "${candidate}" == *,* ]]; then
     die "${label} path contains an unsupported character"
   fi
+  while [[ -L "${candidate}" ]]; do
+    link_target="$(readlink "${candidate}")" || die "cannot resolve ${label}: ${candidate}"
+    if [[ "${link_target}" == /* ]]; then
+      candidate="${link_target}"
+    else
+      candidate="$(dirname -- "${candidate}")/${link_target}"
+    fi
+  done
   [[ -f "${candidate}" ]] || die "${label} must be an existing file: ${candidate}"
   (
     cd -P -- "$(dirname -- "${candidate}")"
@@ -151,37 +164,26 @@ append_research_memory_mount() {
 }
 
 configure_research_memory() {
-  case "${RESEARCH_MEMORY_ENABLED}" in
-    0)
-      return
-      ;;
-    1)
-      ;;
-    *)
-      die "RESEARCH_MEMORY_ENABLED must be 0 or 1 in ${RUNTIME_CONFIG_FILE}"
-      ;;
-  esac
+  [[ "${RESEARCH_MEMORY_ENABLED}" == "1" ]] || return
 
-  [[ -n "${RESEARCH_MEMORY_PROFILE}" ]] || \
-    die "RESEARCH_MEMORY_PROFILE must be set when RESEARCH_MEMORY_ENABLED=1"
-  [[ "${RESEARCH_MEMORY_PROFILE}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || \
-    die "RESEARCH_MEMORY_PROFILE contains unsupported characters"
+  RESEARCH_MEMORY_ROOT="$(absolute_research_memory_dir \
+    RESEARCH_MEMORY_ROOT "${RESEARCH_MEMORY_ROOT}")"
 
   RESEARCH_MEMORY_CLIENT_DIR="$(absolute_research_memory_dir \
-    RESEARCH_MEMORY_CLIENT_DIR "${RESEARCH_MEMORY_CLIENT_DIR}")"
+    RESEARCH_MEMORY_ROOT/client "${RESEARCH_MEMORY_ROOT}/client")"
   [[ -f "${RESEARCH_MEMORY_CLIENT_DIR}/memctl.py" ]] || \
-    die "RESEARCH_MEMORY_CLIENT_DIR must contain memctl.py: ${RESEARCH_MEMORY_CLIENT_DIR}"
+    die "RESEARCH_MEMORY_ROOT/client must contain memctl.py: ${RESEARCH_MEMORY_CLIENT_DIR}"
   [[ -f "${RESEARCH_MEMORY_CLIENT_DIR}/profiles.py" ]] || \
-    die "RESEARCH_MEMORY_CLIENT_DIR must contain profiles.py: ${RESEARCH_MEMORY_CLIENT_DIR}"
+    die "RESEARCH_MEMORY_ROOT/client must contain profiles.py: ${RESEARCH_MEMORY_CLIENT_DIR}"
   RESEARCH_MEMORY_CONFIG="$(absolute_research_memory_file \
-    RESEARCH_MEMORY_CONFIG "${RESEARCH_MEMORY_CONFIG}")"
+    RESEARCH_MEMORY_ROOT/client.json "${RESEARCH_MEMORY_ROOT}/client.json")"
   RESEARCH_MEMORY_IDENTITY_FILE="$(absolute_research_memory_file \
-    RESEARCH_MEMORY_IDENTITY_FILE "${RESEARCH_MEMORY_IDENTITY_FILE}")"
+    RESEARCH_MEMORY_ROOT/id_ed25519 "${RESEARCH_MEMORY_ROOT}/id_ed25519")"
   RESEARCH_MEMORY_KNOWN_HOSTS="$(absolute_research_memory_file \
-    RESEARCH_MEMORY_KNOWN_HOSTS "${RESEARCH_MEMORY_KNOWN_HOSTS}")"
-  if [[ -n "${RESEARCH_MEMORY_SSH_CONFIG}" ]]; then
+    RESEARCH_MEMORY_ROOT/known_hosts "${RESEARCH_MEMORY_ROOT}/known_hosts")"
+  if [[ -e "${RESEARCH_MEMORY_ROOT}/ssh_config" || -L "${RESEARCH_MEMORY_ROOT}/ssh_config" ]]; then
     RESEARCH_MEMORY_SSH_CONFIG="$(absolute_research_memory_file \
-      RESEARCH_MEMORY_SSH_CONFIG "${RESEARCH_MEMORY_SSH_CONFIG}")"
+      RESEARCH_MEMORY_ROOT/ssh_config "${RESEARCH_MEMORY_ROOT}/ssh_config")"
   fi
 
   append_research_memory_mount \
@@ -197,13 +199,14 @@ configure_research_memory() {
       "${RESEARCH_MEMORY_SSH_CONFIG}" "${RESEARCH_MEMORY_CONTAINER_SSH_CONFIG}"
   fi
 
-  # The mounted config supplies host/user details for the selected profile.
-  # The path overrides below make it use only the in-container read-only files.
+  # The mounted config supplies host/user/default-profile details. The path
+  # overrides below make it use only the in-container read-only files.
   ENV_ARGS+=(
     -e "RESEARCH_MEMORY_ENABLED=1"
+    -e "RESEARCH_MEMORY_LAYOUT=${RESEARCH_MEMORY_LAYOUT}"
     -e "RESEARCH_MEMORY_MEMCTL=${RESEARCH_MEMORY_CONTAINER_CLIENT_DIR}/memctl.py"
-    -e "RESEARCH_MEMORY_PROFILE=${RESEARCH_MEMORY_PROFILE}"
-    -e "MEMORY_PROFILE=${RESEARCH_MEMORY_PROFILE}"
+    -e "RESEARCH_MEMORY_PROFILE="
+    -e "MEMORY_PROFILE="
     -e "MEMORY_CONFIG=${RESEARCH_MEMORY_CONTAINER_CONFIG}"
     -e "MEMORY_IDENTITY_FILE=${RESEARCH_MEMORY_CONTAINER_IDENTITY}"
     -e "MEMORY_KNOWN_HOSTS=${RESEARCH_MEMORY_CONTAINER_KNOWN_HOSTS}"
@@ -241,14 +244,25 @@ existing_container_has_any_research_memory_mount() {
   return 1
 }
 
+existing_container_has_research_memory_layout() {
+  docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "${CONTAINER_NAME}" | \
+    grep -Fxq "RESEARCH_MEMORY_LAYOUT=${RESEARCH_MEMORY_LAYOUT}"
+}
+
 validate_existing_research_memory_mounts() {
   if [[ "${RESEARCH_MEMORY_ENABLED}" != "1" ]]; then
     if existing_container_has_any_research_memory_mount; then
-      echo "Error: existing container '${CONTAINER_NAME}' still has research-memory mounts while RESEARCH_MEMORY_ENABLED=0." >&2
+      echo "Error: existing container '${CONTAINER_NAME}' still has research-memory mounts while RESEARCH_MEMORY_ROOT is empty." >&2
       echo "Recreate it once to detach those mounts: AUTO_RECREATE=1 bash ${BASH_SOURCE[0]}" >&2
       exit 1
     fi
     return
+  fi
+
+  if ! existing_container_has_research_memory_layout; then
+    echo "Error: existing container '${CONTAINER_NAME}' uses an older research-memory layout." >&2
+    echo "Recreate it once with AUTO_RECREATE=1: AUTO_RECREATE=1 bash ${BASH_SOURCE[0]}" >&2
+    exit 1
   fi
 
   local mount source destination

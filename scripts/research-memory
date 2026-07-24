@@ -12,7 +12,6 @@ die() {
   die "the read-only research-memory client is not mounted"
 [[ -n "${MEMORY_CONFIG:-}" && -r "${MEMORY_CONFIG}" ]] || \
   die "the non-secret profile configuration is not mounted"
-[[ -n "${MEMORY_PROFILE:-}" ]] || die "no memory profile is selected"
 [[ -n "${MEMORY_IDENTITY_FILE:-}" && -r "${MEMORY_IDENTITY_FILE}" ]] || \
   die "the read-only SSH identity is not mounted"
 [[ -n "${MEMORY_KNOWN_HOSTS:-}" && -r "${MEMORY_KNOWN_HOSTS}" ]] || \

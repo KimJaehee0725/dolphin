@@ -87,60 +87,69 @@ sibling containers.
 ## Optional Research Memory Access
 
 The Dolphin container can use the central research-memory service without
-copying an SSH key into the image. First create a project-scoped profile with
-the `track-research-history` client's `memctl.py`. Then set these local-only
-paths in `config/runtime.env`:
+copying an SSH key into the image. `config/runtime.env` needs only one setting:
 
 ```bash
-RESEARCH_MEMORY_ENABLED=1
-RESEARCH_MEMORY_PROFILE=fab-gym-rw
-RESEARCH_MEMORY_CLIENT_DIR=/absolute/path/to/track-research-history/client
-RESEARCH_MEMORY_CONFIG=/absolute/path/to/.config/research-memory/client.json
-RESEARCH_MEMORY_IDENTITY_FILE=/absolute/path/to/.ssh/research-memory-fab-gym-rw
-RESEARCH_MEMORY_KNOWN_HOSTS=/absolute/path/to/.ssh/known_hosts
-# Optional; set only when the profile's SSH host needs this file.
-RESEARCH_MEMORY_SSH_CONFIG=/absolute/path/to/.ssh/config
+RESEARCH_MEMORY_ROOT=/absolute/path/to/research-memory-dolphin
 ```
 
-All listed values are paths or a profile name. The private key remains in its
-existing host file and is mounted read-only. When enabled, Dolphin validates
-the client directory, JSON profile config, key, and `known_hosts` before it
-starts Docker. It mounts them at fixed read-only container paths and exposes:
+Leave it blank to disable shared memory. The root is a private local directory
+with this fixed layout:
+
+```text
+research-memory-dolphin/
+  client/        -> track-research-history/client
+  client.json    -> non-secret profile configuration
+  id_ed25519     -> project-scoped RPC private key
+  known_hosts    -> verified SSH host keys
+  ssh_config     -> optional, only for SSH aliases such as Local
+```
+
+Create this layout once without copying key material:
 
 ```bash
-RESEARCH_MEMORY_MEMCTL=/opt/research-memory-client/memctl.py
-MEMORY_PROFILE=<selected profile>
-MEMORY_CONFIG=/run/research-memory/client.json
-MEMORY_IDENTITY_FILE=/run/research-memory/id_ed25519
-MEMORY_KNOWN_HOSTS=/run/research-memory/known_hosts
+scripts/research-memory-init \
+  --root "$HOME/.config/dolphin/research-memory" \
+  --client /absolute/path/to/track-research-history/client \
+  --config /absolute/path/to/client.json
 ```
 
-If `RESEARCH_MEMORY_SSH_CONFIG` is set, it is mounted read-only and exported as
-`MEMORY_SSH_CONFIG=/run/research-memory/ssh_config`. Inside the container:
+The script resolves the config's default profile and links its key,
+`known_hosts`, and optional SSH config. To switch a multi-profile config at
+setup time, add `--profile NAME`; it becomes the config's default. One root is
+one active project key. Use a separate root and a separate Dolphin container
+when a different project key is needed.
+
+At start, Dolphin follows each link on the host and individually mounts only
+the resolved client, config, key, `known_hosts`, and optional SSH config as
+read-only files. It never mounts the root directory as a whole.
+
+`known_hosts` is intentionally required. Do not work around a host-key failure
+with `StrictHostKeyChecking=no`; update or verify the host key instead. A
+profile that supplies SSH options should retain `StrictHostKeyChecking=yes`.
+
+The profile config's `default_profile` selects the project; no profile or key
+path needs to be placed in `runtime.env`. Inside the container:
 
 ```bash
 research-memory note list
 research-memory note search "ablation"
 ```
 
-`RESEARCH_MEMORY_KNOWN_HOSTS` is intentionally required. Do not work around a
-host-key failure with `StrictHostKeyChecking=no`; update or verify the host key
-instead. A profile that supplies SSH options should keep
-`StrictHostKeyChecking=yes`.
-
-Docker cannot add or remove bind mounts from an already-created container. If
-you enable research memory, disable it after it was enabled, or change one of
-its mounted paths, the script checks that the current container has the exact
-required read-only mounts. If it does not, it stops with this safe one-time
-recreation command:
+Docker cannot add or remove bind mounts from an already-created container. On
+the first migration to this layout, or whenever the root's resolved targets
+change, rebuild and recreate once:
 
 ```bash
+bash build_image.sh
 AUTO_RECREATE=1 bash make_container.sh
 ```
 
-This does not alter the memory server, project permissions, or SSH host-key
-policy. `RESEARCH_MEMORY_ENABLED=0` remains the default and preserves the
-normal Dolphin workflow.
+The earlier enable/profile/individual-path variables are no longer read. This
+setup does not alter the memory server, project permissions, or SSH host-key
+policy. If `MOUNT_DOCKER_SOCKET=1`, use only a project-scoped forced-command
+key and do not give an untrusted agent this container: Docker socket access can
+otherwise undercut ordinary bind-mount isolation.
 
 Legacy `config/.tokens`, `config/github/token`, `config/huggingface/token`, and
 `config/runtime_tmp.env` files are no longer read by the scripts.

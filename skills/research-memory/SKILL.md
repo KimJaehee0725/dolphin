@@ -1,6 +1,6 @@
 ---
 name: research-memory
-description: Safely recall, read, write, search, delete, and restore durable project Markdown through Dolphin's optional SSH research-memory profile. Use when an agent needs shared cross-host research context, must update project notes from a Dolphin container, or must resolve a note conflict. Do not use for server administration, SSH-key provisioning, direct server-file deletion, or Compose/systemd changes.
+description: Safely recall, read, write, search, delete, and restore durable project Markdown through Dolphin's optional SSH research-memory root and its default project profile. Use when an agent needs shared cross-host research context, must update project notes from a Dolphin container, or must resolve a note conflict. Do not use for server administration, SSH-key provisioning, direct server-file deletion, or Compose/systemd changes.
 ---
 
 # Research Memory
@@ -15,12 +15,13 @@ invent notes or alter the server.
 2. If it reports that research memory is disabled or not mounted, continue with
    the repository's local context and state that shared-memory access was
    unavailable.
-3. With the selected profile, omit the project argument. The profile fixes the
-   project, SSH host, and access key.
+3. With the root's default profile, omit the project argument. One root fixes
+   one project, SSH host, and access key.
 
 The runtime variables and host mounts are prepared by Dolphin's
 `make_container.sh`; see [the runtime reference](references/dolphin-runtime.md)
-only when setup or diagnosis is needed. Never print the environment or the
+only when setup or diagnosis is needed. Change the default profile only on the
+Docker host, then recreate the container. Never print the environment or the
 connection JSON while diagnosing it.
 
 ## Read and search

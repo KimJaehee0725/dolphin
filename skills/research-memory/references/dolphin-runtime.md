@@ -1,36 +1,38 @@
 # Dolphin runtime connection
 
-The connection is opt-in and configured only on the Docker host in the ignored
-`config/runtime.env`. The values below are paths and a profile name, never key
-contents:
+The host's ignored `config/runtime.env` has one optional setting:
 
 ```bash
-RESEARCH_MEMORY_ENABLED=1
-RESEARCH_MEMORY_PROFILE=project-rw
-RESEARCH_MEMORY_CLIENT_DIR=/absolute/path/to/track-research-history/client
-RESEARCH_MEMORY_CONFIG=/absolute/path/to/client.json
-RESEARCH_MEMORY_IDENTITY_FILE=/absolute/path/to/project-key
-RESEARCH_MEMORY_KNOWN_HOSTS=/absolute/path/to/known_hosts
-# Set only when the profile uses an SSH host alias.
-RESEARCH_MEMORY_SSH_CONFIG=/absolute/path/to/ssh_config
+RESEARCH_MEMORY_ROOT=/absolute/path/to/research-memory-dolphin
 ```
 
-`make_container.sh` validates these paths, mounts the client/configuration/key
-materials read-only, and exposes the container-only paths through
-`MEMORY_*` variables. The selected profile may reference host paths in its JSON
-configuration: those are intentionally overridden by the mounted container
-paths at runtime.
+An empty value disables shared memory. The root must contain fixed-name links
+to one active profile's client, configuration, key, and host verification:
 
-If this connection is enabled after a Dolphin container already exists, or it
-is disabled after an existing container had it, set `AUTO_RECREATE=1` once so
-Docker can add or remove the required mounts. Rebuild the image after changing
-the checked-in skill or wrapper:
+```text
+client/  client.json  id_ed25519  known_hosts  [ssh_config]
+```
+
+Create it once on the Docker host without copying key material:
+
+```bash
+scripts/research-memory-init \
+  --root "$HOME/.config/dolphin/research-memory" \
+  --client /absolute/path/to/track-research-history/client \
+  --config /absolute/path/to/client.json
+```
+
+The profile config must have a `default_profile`. Use `--profile NAME` during
+initialization to select one. Dolphin follows the host links, mounts each
+resolved source read-only, and sets container-only `MEMORY_*` overrides. Do
+not mount the root as a whole or change the selected profile in the container.
+
+On first migration, rebuild the image and recreate the Dolphin container:
 
 ```bash
 bash build_image.sh
-bash make_container.sh
+AUTO_RECREATE=1 bash make_container.sh
 ```
 
-The Docker host is responsible for key provisioning and host verification. Do
-not place private keys, connection JSON, or `known_hosts` files under version
-control.
+Never place keys or `known_hosts` under version control, disable host-key
+checking, or use a shared root for unrelated project keys.
