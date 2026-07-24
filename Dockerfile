@@ -78,6 +78,12 @@ COPY --from=node_runtime /usr/local/ /usr/local/
 RUN groupadd -g "${GID}" "${USERNAME}" \
  && useradd -m -u "${UID}" -g "${GID}" -s /bin/zsh "${USERNAME}" \
  && mkdir -p /workspace \
+ && mkdir -p /run/research-memory /opt/research-memory-client \
+ && touch /run/research-memory/client.json \
+          /run/research-memory/id_ed25519 \
+          /run/research-memory/known_hosts \
+          /run/research-memory/ssh_config \
+ && chmod 0755 /run/research-memory /opt/research-memory-client \
  && chown -R "${UID}:${GID}" /workspace "/home/${USERNAME}"
 
 USER ${USERNAME}
@@ -197,6 +203,11 @@ fi
 EOF
 
 RUN chmod 700 "${HOME}/.local/bin/init-dev-auth"
+
+# Install a non-secret, project-scoped memory skill. Runtime configuration and
+# SSH material are mounted only by make_container.sh.
+COPY --chown=${UID}:${GID} skills/research-memory /home/${USERNAME}/.codex/skills/research-memory
+COPY --chmod=0755 --chown=${UID}:${GID} scripts/research-memory /home/${USERNAME}/.local/bin/research-memory
 
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended \
  && git clone --depth=1 https://github.com/romkatv/powerlevel10k.git \

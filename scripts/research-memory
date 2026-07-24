@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+die() {
+  printf 'research-memory: %s\n' "$*" >&2
+  exit 2
+}
+
+[[ "${RESEARCH_MEMORY_ENABLED:-0}" == "1" ]] || \
+  die "shared memory is disabled; set it up in the Docker host runtime.env"
+[[ -n "${RESEARCH_MEMORY_MEMCTL:-}" && -r "${RESEARCH_MEMORY_MEMCTL}" ]] || \
+  die "the read-only research-memory client is not mounted"
+[[ -n "${MEMORY_CONFIG:-}" && -r "${MEMORY_CONFIG}" ]] || \
+  die "the non-secret profile configuration is not mounted"
+[[ -n "${MEMORY_PROFILE:-}" ]] || die "no memory profile is selected"
+[[ -n "${MEMORY_IDENTITY_FILE:-}" && -r "${MEMORY_IDENTITY_FILE}" ]] || \
+  die "the read-only SSH identity is not mounted"
+[[ -n "${MEMORY_KNOWN_HOSTS:-}" && -r "${MEMORY_KNOWN_HOSTS}" ]] || \
+  die "the read-only known_hosts file is not mounted"
+
+exec python3 "${RESEARCH_MEMORY_MEMCTL}" "$@"
