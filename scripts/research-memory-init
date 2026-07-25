@@ -139,4 +139,4 @@ for index in "${!names[@]}"; do
 done
 
 printf 'Research-memory runtime root prepared: %s\n' "${root}"
-printf 'Set RESEARCH_MEMORY_ROOT=%s in config/runtime.env, then rebuild/recreate Dolphin.\n' "${root}"
+printf 'Use research-memory-enable to write the local Dolphin overlay, then rebuild/recreate.\n'

@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOCKER_CONFIG_DIR="${SCRIPT_DIR}/config"
 RUNTIME_CONFIG_FILE="${DOCKER_CONFIG_DIR}/runtime.env"
+RESEARCH_MEMORY_CONFIG_FILE="${DOCKER_CONFIG_DIR}/research-memory.env"
 AUTO_RECREATE_OVERRIDE="${AUTO_RECREATE-}"
 
 if [[ ! -f "${RUNTIME_CONFIG_FILE}" ]]; then
@@ -16,6 +17,15 @@ set -a
 # shellcheck disable=SC1090
 source "${RUNTIME_CONFIG_FILE}"
 set +a
+
+# This optional local-only overlay is written by research-memory-enable. It
+# contains only the path to a host-side connection bundle, never key contents.
+if [[ -f "${RESEARCH_MEMORY_CONFIG_FILE}" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "${RESEARCH_MEMORY_CONFIG_FILE}"
+  set +a
+fi
 
 IMAGE_NAME="${IMAGE_NAME:?IMAGE_NAME must be set in ${RUNTIME_CONFIG_FILE}}"
 CONTAINER_NAME="${CONTAINER_NAME:?CONTAINER_NAME must be set in ${RUNTIME_CONFIG_FILE}}"

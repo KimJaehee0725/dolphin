@@ -9,14 +9,29 @@ Use the mounted research-memory client as the shared, project-scoped source of
 truth. It is optional: absence of the runtime configuration is not a reason to
 invent notes or alter the server.
 
-## Start safely
+## First-task availability and consent
 
-1. Check that the client is available. Run `research-memory note list`.
-2. If it reports that research memory is disabled or not mounted, continue with
-   the repository's local context and state that shared-memory access was
-   unavailable.
-3. With the root's default profile, omit the project argument. One root fixes
-   one project, SSH host, and access key.
+At the first substantive task in a Dolphin container session, run:
+
+```bash
+research-memory note list
+```
+
+If it succeeds, use the root's default profile and omit the project argument.
+One root fixes one project, SSH host, and access key.
+
+If it reports that shared memory is disabled or not mounted, ask the user in
+the current conversation: “공용 Research Memory를 이 컨테이너에 사용할까요?”
+
+- If the user declines, continue with local context and do not ask again in the
+  same container session.
+- If the user agrees, do not read, print, or edit keys or `runtime.env` from
+  the container. Explain that setup is host-side. When operating on the Docker
+  host, run `scripts/research-memory-enable`; otherwise give the user that
+  command to run from the Dolphin checkout.
+- The enable script creates only a local ignored overlay and symlinks. Before
+  rebuilding or recreating a container, state that it will replace the current
+  container and obtain confirmation for that separate step.
 
 The runtime variables and host mounts are prepared by Dolphin's
 `make_container.sh`; see [the runtime reference](references/dolphin-runtime.md)

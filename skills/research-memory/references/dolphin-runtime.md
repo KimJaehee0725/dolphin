@@ -1,25 +1,27 @@
 # Dolphin runtime connection
 
-The host's ignored `config/runtime.env` has one optional setting:
+The Docker host enables the optional connection with:
 
 ```bash
-RESEARCH_MEMORY_ROOT=/absolute/path/to/research-memory-dolphin
+scripts/research-memory-enable
 ```
 
-An empty value disables shared memory. The root must contain fixed-name links
-to one active profile's client, configuration, key, and host verification:
+It writes the ignored `config/research-memory.env` overlay. The root it creates
+contains fixed-name links to one active profile's client, configuration, key,
+and host verification:
 
 ```text
 client/  client.json  id_ed25519  known_hosts  [ssh_config]
 ```
 
-Create it once on the Docker host without copying key material:
+Pass explicit locations or choose a profile only when the defaults do not fit:
 
 ```bash
-scripts/research-memory-init \
+scripts/research-memory-enable \
   --root "$HOME/.config/dolphin/research-memory" \
   --client /absolute/path/to/track-research-history/client \
-  --config /absolute/path/to/client.json
+  --config /absolute/path/to/client.json \
+  --profile project-rw
 ```
 
 The profile config must have a `default_profile`. Use `--profile NAME` during

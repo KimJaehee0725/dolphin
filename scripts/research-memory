@@ -7,7 +7,7 @@ die() {
 }
 
 [[ "${RESEARCH_MEMORY_ENABLED:-0}" == "1" ]] || \
-  die "shared memory is disabled; set it up in the Docker host runtime.env"
+  die "shared memory is disabled; enable it on the Docker host with scripts/research-memory-enable"
 [[ -n "${RESEARCH_MEMORY_MEMCTL:-}" && -r "${RESEARCH_MEMORY_MEMCTL}" ]] || \
   die "the read-only research-memory client is not mounted"
 [[ -n "${MEMORY_CONFIG:-}" && -r "${MEMORY_CONFIG}" ]] || \

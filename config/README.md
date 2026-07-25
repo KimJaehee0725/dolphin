@@ -87,14 +87,14 @@ sibling containers.
 ## Optional Research Memory Access
 
 The Dolphin container can use the central research-memory service without
-copying an SSH key into the image. `config/runtime.env` needs only one setting:
+copying an SSH key into the image. On the Docker host, run:
 
 ```bash
-RESEARCH_MEMORY_ROOT=/absolute/path/to/research-memory-dolphin
+scripts/research-memory-enable
 ```
 
-Leave it blank to disable shared memory. The root is a private local directory
-with this fixed layout:
+It creates the ignored `config/research-memory.env` overlay and a private local
+root with this fixed layout:
 
 ```text
 research-memory-dolphin/
@@ -105,13 +105,14 @@ research-memory-dolphin/
   ssh_config     -> optional, only for SSH aliases such as Local
 ```
 
-Create this layout once without copying key material:
+For a non-default client/config location or a different profile, pass options:
 
 ```bash
-scripts/research-memory-init \
+scripts/research-memory-enable \
   --root "$HOME/.config/dolphin/research-memory" \
   --client /absolute/path/to/track-research-history/client \
-  --config /absolute/path/to/client.json
+  --config /absolute/path/to/client.json \
+  --profile project-rw
 ```
 
 The script resolves the config's default profile and links its key,
@@ -145,11 +146,12 @@ bash build_image.sh
 AUTO_RECREATE=1 bash make_container.sh
 ```
 
-The earlier enable/profile/individual-path variables are no longer read. This
-setup does not alter the memory server, project permissions, or SSH host-key
-policy. If `MOUNT_DOCKER_SOCKET=1`, use only a project-scoped forced-command
-key and do not give an untrusted agent this container: Docker socket access can
-otherwise undercut ordinary bind-mount isolation.
+The main `runtime.env` remains untouched; `make_container.sh` reads the ignored
+overlay when it exists. This setup does not alter the memory server, project
+permissions, or SSH host-key policy. If `MOUNT_DOCKER_SOCKET=1`, use only a
+project-scoped forced-command key and do not give an untrusted agent this
+container: Docker socket access can otherwise undercut ordinary bind-mount
+isolation.
 
 Legacy `config/.tokens`, `config/github/token`, `config/huggingface/token`, and
 `config/runtime_tmp.env` files are no longer read by the scripts.
