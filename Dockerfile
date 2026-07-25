@@ -206,6 +206,7 @@ RUN chmod 700 "${HOME}/.local/bin/init-dev-auth"
 
 # Install a non-secret, project-scoped memory skill. Runtime configuration and
 # SSH material are mounted only by make_container.sh.
+COPY --chown=${UID}:${GID} AGENTS.md /home/${USERNAME}/.codex/AGENTS.md
 COPY --chown=${UID}:${GID} skills/research-memory /home/${USERNAME}/.codex/skills/research-memory
 COPY --chmod=0755 --chown=${UID}:${GID} scripts/research-memory /home/${USERNAME}/.local/bin/research-memory
 

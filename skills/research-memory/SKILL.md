@@ -20,6 +20,18 @@ research-memory note list
 If it succeeds, use the root's default profile and omit the project argument.
 One root fixes one project, SSH host, and access key.
 
+Before beginning project-related work, retrieve the existing relevant notes:
+
+```bash
+research-memory note list
+research-memory note search "project-specific terms"
+```
+
+At the end of a non-trivial task, record an important decision, experiment
+result, or project change that a later agent needs to know. Skip routine
+checks and trivial chat. Use the conflict-safe write procedure below; never
+overwrite a note blindly.
+
 If it reports that shared memory is disabled or not mounted, ask the user in
 the current conversation: “공용 Research Memory를 이 컨테이너에 사용할까요?”
 

@@ -34,6 +34,11 @@ resolves the root's fixed layout and mounts only the required client code,
 non-secret profile config, one private key, and `known_hosts` as read-only
 files; the image does not contain any SSH key.
 
+The Dockerfile copies the `research-memory` agent skill, its command wrapper,
+and Dolphin's global `AGENTS.md` guidance into every rebuilt image. The first
+substantive task therefore checks availability, uses the default profile when
+available, and asks for consent once per container session when it is not.
+
 The integration is opt-in and requires a container recreation when its mounts
 are first added or changed. See [config/README.md](config/README.md#optional-research-memory-access)
 for the exact path settings, verification behavior, and in-container commands.
