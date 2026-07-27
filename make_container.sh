@@ -50,12 +50,23 @@ HF_TOKEN="${HF_TOKEN:-}"
 HUGGINGFACE_TOKEN="${HUGGINGFACE_TOKEN:-}"
 WANDB_API_KEY="${WANDB_API_KEY:-}"
 
-# Optional, project-scoped research-memory client. A non-empty root has a
-# fixed, symlink-friendly layout; private-key contents stay outside runtime.env.
+# Optional Research Memory connection. Password mode is intentionally simple
+# for this personal server: host, user, and password live only in ignored
+# runtime.env and the server grants all-project RPC access. The legacy root
+# mode keeps project-scoped key mounts for users who still need it.
 RESEARCH_MEMORY_ROOT="${RESEARCH_MEMORY_ROOT:-}"
+RESEARCH_MEMORY_HOST="${RESEARCH_MEMORY_HOST:-}"
+RESEARCH_MEMORY_USER="${RESEARCH_MEMORY_USER:-}"
+RESEARCH_MEMORY_PASSWORD="${RESEARCH_MEMORY_PASSWORD:-}"
+RESEARCH_MEMORY_PROJECT="${RESEARCH_MEMORY_PROJECT:-}"
 RESEARCH_MEMORY_ENABLED=0
-if [[ -n "${RESEARCH_MEMORY_ROOT}" ]]; then
+RESEARCH_MEMORY_MODE=""
+if [[ -n "${RESEARCH_MEMORY_HOST}" || -n "${RESEARCH_MEMORY_USER}" || -n "${RESEARCH_MEMORY_PASSWORD}" ]]; then
   RESEARCH_MEMORY_ENABLED=1
+  RESEARCH_MEMORY_MODE="password"
+elif [[ -n "${RESEARCH_MEMORY_ROOT}" ]]; then
+  RESEARCH_MEMORY_ENABLED=1
+  RESEARCH_MEMORY_MODE="key"
 fi
 RESEARCH_MEMORY_CLIENT_DIR=""
 RESEARCH_MEMORY_CONFIG=""
@@ -70,7 +81,7 @@ RESEARCH_MEMORY_CONTAINER_CONFIG="${RESEARCH_MEMORY_CONTAINER_DIR}/client.json"
 RESEARCH_MEMORY_CONTAINER_IDENTITY="${RESEARCH_MEMORY_CONTAINER_DIR}/id_ed25519"
 RESEARCH_MEMORY_CONTAINER_KNOWN_HOSTS="${RESEARCH_MEMORY_CONTAINER_DIR}/known_hosts"
 RESEARCH_MEMORY_CONTAINER_SSH_CONFIG="${RESEARCH_MEMORY_CONTAINER_DIR}/ssh_config"
-RESEARCH_MEMORY_LAYOUT="v2"
+RESEARCH_MEMORY_LAYOUT="v3"
 
 TERM_VALUE="${TERM:-xterm-256color}"
 COLORTERM_VALUE="${COLORTERM:-truecolor}"
@@ -173,8 +184,22 @@ append_research_memory_mount() {
   RESEARCH_MEMORY_MOUNTS+=("${source}"$'\t'"${destination}")
 }
 
-configure_research_memory() {
-  [[ "${RESEARCH_MEMORY_ENABLED}" == "1" ]] || return
+configure_password_research_memory() {
+  [[ -n "${RESEARCH_MEMORY_HOST}" && -n "${RESEARCH_MEMORY_USER}" && -n "${RESEARCH_MEMORY_PASSWORD}" ]] || \
+    die "RESEARCH_MEMORY_HOST, RESEARCH_MEMORY_USER, and RESEARCH_MEMORY_PASSWORD must be set together"
+  ENV_ARGS+=(
+    -e "RESEARCH_MEMORY_ENABLED=1"
+    -e "RESEARCH_MEMORY_MODE=password"
+    -e "RESEARCH_MEMORY_LAYOUT=${RESEARCH_MEMORY_LAYOUT}"
+    -e "RESEARCH_MEMORY_MEMCTL=${RESEARCH_MEMORY_CONTAINER_CLIENT_DIR}/memctl.py"
+    -e "MEMORY_HOST=${RESEARCH_MEMORY_HOST}"
+    -e "MEMORY_USER=${RESEARCH_MEMORY_USER}"
+    -e "MEMORY_PASSWORD=${RESEARCH_MEMORY_PASSWORD}"
+    -e "MEMORY_PROJECT=${RESEARCH_MEMORY_PROJECT}"
+  )
+}
+
+configure_key_research_memory() {
 
   RESEARCH_MEMORY_ROOT="$(absolute_research_memory_dir \
     RESEARCH_MEMORY_ROOT "${RESEARCH_MEMORY_ROOT}")"
@@ -226,6 +251,15 @@ configure_research_memory() {
   fi
 }
 
+configure_research_memory() {
+  [[ "${RESEARCH_MEMORY_ENABLED}" == "1" ]] || return
+  if [[ "${RESEARCH_MEMORY_MODE}" == "password" ]]; then
+    configure_password_research_memory
+  else
+    configure_key_research_memory
+  fi
+}
+
 existing_container_has_research_memory_mount() {
   local source="$1"
   local destination="$2"
@@ -259,11 +293,31 @@ existing_container_has_research_memory_layout() {
     grep -Fxq "RESEARCH_MEMORY_LAYOUT=${RESEARCH_MEMORY_LAYOUT}"
 }
 
+existing_container_has_research_memory_mode() {
+  docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "${CONTAINER_NAME}" | \
+    grep -Fxq "RESEARCH_MEMORY_MODE=${RESEARCH_MEMORY_MODE}"
+}
+
 validate_existing_research_memory_mounts() {
   if [[ "${RESEARCH_MEMORY_ENABLED}" != "1" ]]; then
     if existing_container_has_any_research_memory_mount; then
       echo "Error: existing container '${CONTAINER_NAME}' still has research-memory mounts while RESEARCH_MEMORY_ROOT is empty." >&2
       echo "Recreate it once to detach those mounts: AUTO_RECREATE=1 bash ${BASH_SOURCE[0]}" >&2
+      exit 1
+    fi
+    return
+  fi
+
+  if [[ "${RESEARCH_MEMORY_MODE}" == "password" ]]; then
+    if existing_container_has_any_research_memory_mount; then
+      echo "Error: existing container '${CONTAINER_NAME}' still has legacy key-mode research-memory mounts." >&2
+      echo "Recreate it once to remove those mounts: AUTO_RECREATE=1 bash ${BASH_SOURCE[0]}" >&2
+      exit 1
+    fi
+    if ! existing_container_has_research_memory_layout || \
+        ! existing_container_has_research_memory_mode; then
+      echo "Error: existing container '${CONTAINER_NAME}' was not created for password-mode research memory." >&2
+      echo "Recreate it once with AUTO_RECREATE=1: AUTO_RECREATE=1 bash ${BASH_SOURCE[0]}" >&2
       exit 1
     fi
     return

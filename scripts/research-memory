@@ -7,14 +7,20 @@ die() {
 }
 
 [[ "${RESEARCH_MEMORY_ENABLED:-0}" == "1" ]] || \
-  die "shared memory is disabled; enable it on the Docker host with scripts/research-memory-enable"
+  die "shared memory is disabled; configure password mode in runtime.env or enable the key mode on the Docker host"
 [[ -n "${RESEARCH_MEMORY_MEMCTL:-}" && -r "${RESEARCH_MEMORY_MEMCTL}" ]] || \
-  die "the read-only research-memory client is not mounted"
-[[ -n "${MEMORY_CONFIG:-}" && -r "${MEMORY_CONFIG}" ]] || \
-  die "the non-secret profile configuration is not mounted"
-[[ -n "${MEMORY_IDENTITY_FILE:-}" && -r "${MEMORY_IDENTITY_FILE}" ]] || \
-  die "the read-only SSH identity is not mounted"
-[[ -n "${MEMORY_KNOWN_HOSTS:-}" && -r "${MEMORY_KNOWN_HOSTS}" ]] || \
-  die "the read-only known_hosts file is not mounted"
+  die "the research-memory client is not available"
+
+if [[ "${RESEARCH_MEMORY_MODE:-key}" == "password" ]]; then
+  [[ -n "${MEMORY_HOST:-}" && -n "${MEMORY_USER:-}" && -n "${MEMORY_PASSWORD:-}" ]] || \
+    die "password-mode host, user, or password is missing"
+else
+  [[ -n "${MEMORY_CONFIG:-}" && -r "${MEMORY_CONFIG}" ]] || \
+    die "the non-secret profile configuration is not mounted"
+  [[ -n "${MEMORY_IDENTITY_FILE:-}" && -r "${MEMORY_IDENTITY_FILE}" ]] || \
+    die "the read-only SSH identity is not mounted"
+  [[ -n "${MEMORY_KNOWN_HOSTS:-}" && -r "${MEMORY_KNOWN_HOSTS}" ]] || \
+    die "the read-only known_hosts file is not mounted"
+fi
 
 exec python3 "${RESEARCH_MEMORY_MEMCTL}" "$@"

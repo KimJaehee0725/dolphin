@@ -1,6 +1,25 @@
 # Dolphin runtime connection
 
-The Docker host enables the optional connection with:
+## Personal password mode
+
+For the simple personal-server workflow, put only these values in the ignored
+Docker-host `config/runtime.env`:
+
+```bash
+RESEARCH_MEMORY_HOST=147.47.39.138
+RESEARCH_MEMORY_USER=memory-rpc
+RESEARCH_MEMORY_PASSWORD='set-this-locally'
+# Optional. Empty means the agent asks which project memory to use.
+RESEARCH_MEMORY_PROJECT=
+```
+
+No host-side key bundle or enable helper is needed in this mode. Dolphin passes
+the values to each new container, and its bundled client uses password SSH with
+host-key verification disabled. Never print or commit the real runtime file.
+
+## Legacy project-key mode
+
+The Docker host enables the optional project-key connection with:
 
 ```bash
 scripts/research-memory-enable

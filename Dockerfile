@@ -24,6 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     git \
     openssh-client \
+    sshpass \
     locales \
     tzdata \
     unzip \
@@ -85,6 +86,19 @@ RUN groupadd -g "${GID}" "${USERNAME}" \
           /run/research-memory/ssh_config \
  && chmod 0755 /run/research-memory /opt/research-memory-client \
  && chown -R "${UID}:${GID}" /workspace "/home/${USERNAME}"
+
+# Personal password mode needs only the dependency-free public client. Its
+# credentials arrive at container start through ignored runtime.env, never in
+# the image or this build layer.
+ARG RESEARCH_MEMORY_CLIENT_REPOSITORY=https://github.com/KimJaehee0725/track-research-history.git
+ARG RESEARCH_MEMORY_CLIENT_REF=main
+RUN git clone --depth 1 --branch "${RESEARCH_MEMORY_CLIENT_REF}" \
+      "${RESEARCH_MEMORY_CLIENT_REPOSITORY}" /tmp/research-memory-source \
+ && install -d -m 0755 /opt/research-memory-client \
+ && install -m 0644 /tmp/research-memory-source/client/memctl.py \
+      /tmp/research-memory-source/client/profiles.py \
+      /opt/research-memory-client/ \
+ && rm -rf /tmp/research-memory-source
 
 USER ${USERNAME}
 

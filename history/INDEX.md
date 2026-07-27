@@ -1,6 +1,6 @@
 # History Index
 
-Generated: 2026-07-25 16:09 +0900
+Generated: 2026-07-27 13:26 +0900
 
 ## Current Context
 
@@ -11,11 +11,13 @@ Generated: 2026-07-25 16:09 +0900
 
 ### daily
 
+- `history/daily/2026-07-27.md` - Daily Log - 2026-07-27
 - `history/daily/2026-07-25.md` - Daily Log - 2026-07-25
 - `history/daily/2026-07-24.md` - Daily Log - 2026-07-24
 
 ### changes
 
+- `history/changes/2026-07-27-132641-dolphin-research-memory.md` - Change - Dolphin 비밀번호 기반 전체 프로젝트 Research Memory 연결
 - `history/changes/2026-07-25-160945-dolphin-research-memory.md` - Change - Dolphin 이미지에 전역 Research Memory 에이전트 지침 포함
 - `history/changes/2026-07-25-160832-research-memory.md` - Change - Research Memory 자동 조회와 작업 종료 기록 의무 명시
 - `history/changes/2026-07-25-143723-dolphin-research-memory.md` - Change - Dolphin 에이전트의 Research Memory 동의 기반 설정 추가

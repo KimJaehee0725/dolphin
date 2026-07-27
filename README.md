@@ -28,7 +28,13 @@ See [config/README.md](config/README.md) for the full runtime configuration note
 
 ## Optional Central Research Memory
 
-Run `scripts/research-memory-enable` on the Docker host to create an ignored
+For a personal all-project server, put `RESEARCH_MEMORY_HOST`,
+`RESEARCH_MEMORY_USER`, and `RESEARCH_MEMORY_PASSWORD` in ignored
+`config/runtime.env`. Leave `RESEARCH_MEMORY_PROJECT` empty to have the first
+agent ask which memory to use, or set a project ID to select it automatically.
+This password mode skips `known_hosts` verification by design.
+
+The legacy key mode uses `scripts/research-memory-enable` on the Docker host to create an ignored
 local overlay for one default project-scoped research-memory profile. Dolphin
 resolves the root's fixed layout and mounts only the required client code,
 non-secret profile config, one private key, and `known_hosts` as read-only

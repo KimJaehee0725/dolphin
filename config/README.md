@@ -84,7 +84,26 @@ but volume, port, and working-directory changes still require recreation.
 group to the dev container. This is required for helper scripts that start
 sibling containers.
 
-## Optional Research Memory Access
+## Personal Research Memory Password Access
+
+For one-person, all-project access, add these values to the ignored
+`config/runtime.env` on the Docker host:
+
+```bash
+RESEARCH_MEMORY_HOST=147.47.39.138
+RESEARCH_MEMORY_USER=memory-rpc
+RESEARCH_MEMORY_PASSWORD='set-this-locally'
+RESEARCH_MEMORY_PROJECT=
+```
+
+Leave `RESEARCH_MEMORY_PROJECT` empty to let the first agent list the available
+projects and ask which one to use. Set it to a project ID to use that memory
+without a question. The image includes the client and `sshpass`; it does not
+need `scripts/research-memory-enable` in this mode. Password mode deliberately
+does not use `known_hosts` verification. Rebuild and recreate once after the
+image change.
+
+## Optional Research Memory Key Access (Legacy)
 
 The Dolphin container can use the central research-memory service without
 copying an SSH key into the image. On the Docker host, run:
