@@ -12,6 +12,9 @@ ARG USERNAME=appuser
 ARG GIT_NAME="Codex User"
 ARG GIT_EMAIL="codex@example.com"
 
+# Ubuntu 22.04 cannot run newer prebuilt releases that require glibc 2.39.
+ARG TREE_SITTER_CLI_VERSION=0.25.10
+
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
@@ -155,7 +158,7 @@ RUN uv tool install ruff \
  && curl -fsSL "${STYLUA_URL}" -o /tmp/stylua.zip \
  && unzip -q /tmp/stylua.zip -d /tmp/stylua \
  && install -m 0755 /tmp/stylua/stylua "${HOME}/.local/bin/stylua" \
- && npm install -g tree-sitter-cli \
+ && npm install -g "tree-sitter-cli@${TREE_SITTER_CLI_VERSION}" \
  && rm -rf /tmp/stylua /tmp/stylua.zip \
  && ruff --version \
  && stylua --version \
