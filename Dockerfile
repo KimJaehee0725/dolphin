@@ -27,7 +27,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     git \
     openssh-client \
-    sshpass \
     locales \
     tzdata \
     unzip \
@@ -50,7 +49,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-utils \
     pandoc \
     graphviz \
-    sqlite3 \
     parallel \
     file \
     docker.io \
@@ -82,32 +80,13 @@ COPY --from=node_runtime /usr/local/ /usr/local/
 RUN groupadd -g "${GID}" "${USERNAME}" \
  && useradd -m -u "${UID}" -g "${GID}" -s /bin/zsh "${USERNAME}" \
  && mkdir -p /workspace \
- && mkdir -p /run/research-memory /opt/research-memory-client \
- && touch /run/research-memory/client.json \
-          /run/research-memory/id_ed25519 \
-          /run/research-memory/known_hosts \
-          /run/research-memory/ssh_config \
- && chmod 0755 /run/research-memory /opt/research-memory-client \
  && chown -R "${UID}:${GID}" /workspace "/home/${USERNAME}"
-
-# Personal password mode needs only the dependency-free public client. Its
-# credentials arrive at container start through ignored runtime.env, never in
-# the image or this build layer.
-ARG RESEARCH_MEMORY_CLIENT_REPOSITORY=https://github.com/KimJaehee0725/track-research-history.git
-ARG RESEARCH_MEMORY_CLIENT_REF=main
-RUN git clone --depth 1 --branch "${RESEARCH_MEMORY_CLIENT_REF}" \
-      "${RESEARCH_MEMORY_CLIENT_REPOSITORY}" /tmp/research-memory-source \
- && install -d -m 0755 /opt/research-memory-client \
- && install -m 0644 /tmp/research-memory-source/client/memctl.py \
-      /tmp/research-memory-source/client/profiles.py \
-      /opt/research-memory-client/ \
- && rm -rf /tmp/research-memory-source
 
 USER ${USERNAME}
 
 ENV HOME=/home/${USERNAME}
 ENV NPM_CONFIG_PREFIX="${HOME}/.npm-global"
-ENV PATH="${HOME}/.local/bin:${HOME}/.npm-global/bin:${PATH}"
+ENV PATH="${HOME}/.venv/bin:${HOME}/.local/bin:${HOME}/.npm-global/bin:${PATH}"
 ENV UV_TORCH_BACKEND=cu121
 ENV COLORTERM=truecolor
 ENV RUNZSH=no
@@ -118,12 +97,24 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 RUN uv python install 3.12 \
  && uv venv "${HOME}/.venv" --python 3.12 \
- && uv pip install --python "${HOME}/.venv/bin/python" pip numpy \
- && mkdir -p "${HOME}/.local/bin" \
- && ln -sf "${HOME}/.venv/bin/python" "${HOME}/.local/bin/python" \
- && ln -sf "${HOME}/.venv/bin/python" "${HOME}/.local/bin/python3" \
- && ln -sf "${HOME}/.venv/bin/pip" "${HOME}/.local/bin/pip" \
- && ln -sf "${HOME}/.venv/bin/pip" "${HOME}/.local/bin/pip3"
+ && uv pip install --python "${HOME}/.venv/bin/python" pip numpy
+
+# Install the repo-local Markdown history skill. It vendors BM25S and keeps all
+# project memory inside each repository's history/ directory.
+ARG TRACK_RESEARCH_HISTORY_REPOSITORY=https://github.com/KimJaehee0725/track-research-history.git
+ARG TRACK_RESEARCH_HISTORY_REF=main
+RUN git clone --depth 1 --branch "${TRACK_RESEARCH_HISTORY_REF}" \
+      "${TRACK_RESEARCH_HISTORY_REPOSITORY}" /tmp/track-research-history-source \
+ && install -d -m 0755 "${HOME}/.codex/skills/track-research-history" \
+ && cp -a /tmp/track-research-history-source/SKILL.md \
+      /tmp/track-research-history-source/agents \
+      /tmp/track-research-history-source/references \
+      /tmp/track-research-history-source/scripts \
+      "${HOME}/.codex/skills/track-research-history/" \
+ && chmod 0755 "${HOME}/.codex/skills/track-research-history/scripts/history.py" \
+ && "${HOME}/.venv/bin/python" \
+      "${HOME}/.codex/skills/track-research-history/scripts/history.py" --help >/dev/null \
+ && rm -rf /tmp/track-research-history-source
 
 RUN mkdir -p "${NPM_CONFIG_PREFIX}" \
  && npm config set prefix "${NPM_CONFIG_PREFIX}" \
@@ -221,11 +212,9 @@ EOF
 
 RUN chmod 700 "${HOME}/.local/bin/init-dev-auth"
 
-# Install a non-secret, project-scoped memory skill. Runtime configuration and
-# SSH material are mounted only by make_container.sh.
+# Global guidance points agents at the installed repo-local BM25S skill. No
+# passwords, SSH keys, or memory service configuration are copied into images.
 COPY --chown=${UID}:${GID} AGENTS.md /home/${USERNAME}/.codex/AGENTS.md
-COPY --chown=${UID}:${GID} skills/research-memory /home/${USERNAME}/.codex/skills/research-memory
-COPY --chmod=0755 --chown=${UID}:${GID} scripts/research-memory /home/${USERNAME}/.local/bin/research-memory
 
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended \
  && git clone --depth=1 https://github.com/romkatv/powerlevel10k.git \

@@ -84,93 +84,12 @@ but volume, port, and working-directory changes still require recreation.
 group to the dev container. This is required for helper scripts that start
 sibling containers.
 
-## Personal Research Memory Password Access
-
-For one-person, all-project access, add these values to the ignored
-`config/runtime.env` on the Docker host:
-
-```bash
-RESEARCH_MEMORY_HOST=147.47.39.138
-RESEARCH_MEMORY_USER=memory-rpc
-RESEARCH_MEMORY_PASSWORD='set-this-locally'
-RESEARCH_MEMORY_PROJECT=
-```
-
-Leave `RESEARCH_MEMORY_PROJECT` empty to let the first agent list the available
-projects and ask which one to use. Set it to a project ID to use that memory
-without a question. The image includes the client and `sshpass`; it does not
-need `scripts/research-memory-enable` in this mode. Password mode deliberately
-does not use `known_hosts` verification. Rebuild and recreate once after the
-image change.
-
-## Optional Research Memory Key Access (Legacy)
-
-The Dolphin container can use the central research-memory service without
-copying an SSH key into the image. On the Docker host, run:
-
-```bash
-scripts/research-memory-enable
-```
-
-It creates the ignored `config/research-memory.env` overlay and a private local
-root with this fixed layout:
-
-```text
-research-memory-dolphin/
-  client/        -> track-research-history/client
-  client.json    -> non-secret profile configuration
-  id_ed25519     -> project-scoped RPC private key
-  known_hosts    -> verified SSH host keys
-  ssh_config     -> optional, only for SSH aliases such as Local
-```
-
-For a non-default client/config location or a different profile, pass options:
-
-```bash
-scripts/research-memory-enable \
-  --root "$HOME/.config/dolphin/research-memory" \
-  --client /absolute/path/to/track-research-history/client \
-  --config /absolute/path/to/client.json \
-  --profile project-rw
-```
-
-The script resolves the config's default profile and links its key,
-`known_hosts`, and optional SSH config. To switch a multi-profile config at
-setup time, add `--profile NAME`; it becomes the config's default. One root is
-one active project key. Use a separate root and a separate Dolphin container
-when a different project key is needed.
-
-At start, Dolphin follows each link on the host and individually mounts only
-the resolved client, config, key, `known_hosts`, and optional SSH config as
-read-only files. It never mounts the root directory as a whole.
-
-`known_hosts` is intentionally required. Do not work around a host-key failure
-with `StrictHostKeyChecking=no`; update or verify the host key instead. A
-profile that supplies SSH options should retain `StrictHostKeyChecking=yes`.
-
-The profile config's `default_profile` selects the project; no profile or key
-path needs to be placed in `runtime.env`. Inside the container:
-
-```bash
-research-memory note list
-research-memory note search "ablation"
-```
-
-Docker cannot add or remove bind mounts from an already-created container. On
-the first migration to this layout, or whenever the root's resolved targets
-change, rebuild and recreate once:
-
-```bash
-bash build_image.sh
-AUTO_RECREATE=1 bash make_container.sh
-```
-
-The main `runtime.env` remains untouched; `make_container.sh` reads the ignored
-overlay when it exists. This setup does not alter the memory server, project
-permissions, or SSH host-key policy. If `MOUNT_DOCKER_SOCKET=1`, use only a
-project-scoped forced-command key and do not give an untrusted agent this
-container: Docker socket access can otherwise undercut ordinary bind-mount
-isolation.
-
 Legacy `config/.tokens`, `config/github/token`, `config/huggingface/token`, and
 `config/runtime_tmp.env` files are no longer read by the scripts.
+
+## Research History
+
+No research-memory host, password, key, profile, or mount belongs in
+`runtime.env`. The image already contains the repo-local `track-research-history`
+skill; each mounted project stores and searches its own `history/` Markdown with
+vendored BM25S.

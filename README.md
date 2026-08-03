@@ -6,6 +6,7 @@ Docker-based development environment for research and coding agents.
 
 - CUDA 12.2 Ubuntu base image with Node.js, Python 3.12 via `uv`, GitHub CLI, Docker CLI, tmux, zsh, and common terminal tools.
 - OpenAI Codex CLI and Claude Code.
+- Repository-local Markdown research history with vendored BM25S recall and Obsidian project maps.
 
 ## Runtime Config
 
@@ -26,25 +27,18 @@ bash make_container.sh
 
 See [config/README.md](config/README.md) for the full runtime configuration notes.
 
-## Optional Central Research Memory
+## Research History
 
-For a personal all-project server, put `RESEARCH_MEMORY_HOST`,
-`RESEARCH_MEMORY_USER`, and `RESEARCH_MEMORY_PASSWORD` in ignored
-`config/runtime.env`. Leave `RESEARCH_MEMORY_PROJECT` empty to have the first
-agent ask which memory to use, or set a project ID to select it automatically.
-This password mode skips `known_hosts` verification by design.
+The image installs `track-research-history` under
+`~/.codex/skills/track-research-history`. Every mounted project keeps its own
+Git-tracked `history/` folder; there is no central memory service, SQLite index,
+password mode, SSH RPC, or extra runtime mount.
 
-The legacy key mode uses `scripts/research-memory-enable` on the Docker host to create an ignored
-local overlay for one default project-scoped research-memory profile. Dolphin
-resolves the root's fixed layout and mounts only the required client code,
-non-secret profile config, one private key, and `known_hosts` as read-only
-files; the image does not contain any SSH key.
+```bash
+python3 ~/.codex/skills/track-research-history/scripts/history.py bootstrap
+python3 ~/.codex/skills/track-research-history/scripts/history.py start --query "current task"
+python3 ~/.codex/skills/track-research-history/scripts/history.py search "decision or experiment"
+```
 
-The Dockerfile copies the `research-memory` agent skill, its command wrapper,
-and Dolphin's global `AGENTS.md` guidance into every rebuilt image. The first
-substantive task therefore checks availability, uses the default profile when
-available, and asks for consent once per container session when it is not.
-
-The integration is opt-in and requires a container recreation when its mounts
-are first added or changed. See [config/README.md](config/README.md#optional-research-memory-access)
-for the exact path settings, verification behavior, and in-container commands.
+Open a project's `history/` folder directly in Obsidian and use
+`PROJECT_MAP.md` for portable links, backlinks, and graph navigation.

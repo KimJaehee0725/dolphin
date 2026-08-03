@@ -5,7 +5,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOCKER_CONFIG_DIR="${SCRIPT_DIR}/config"
 RUNTIME_CONFIG_FILE="${DOCKER_CONFIG_DIR}/runtime.env"
-RESEARCH_MEMORY_CONFIG_FILE="${DOCKER_CONFIG_DIR}/research-memory.env"
 AUTO_RECREATE_OVERRIDE="${AUTO_RECREATE-}"
 
 if [[ ! -f "${RUNTIME_CONFIG_FILE}" ]]; then
@@ -17,15 +16,6 @@ set -a
 # shellcheck disable=SC1090
 source "${RUNTIME_CONFIG_FILE}"
 set +a
-
-# This optional local-only overlay is written by research-memory-enable. It
-# contains only the path to a host-side connection bundle, never key contents.
-if [[ -f "${RESEARCH_MEMORY_CONFIG_FILE}" ]]; then
-  set -a
-  # shellcheck disable=SC1090
-  source "${RESEARCH_MEMORY_CONFIG_FILE}"
-  set +a
-fi
 
 IMAGE_NAME="${IMAGE_NAME:?IMAGE_NAME must be set in ${RUNTIME_CONFIG_FILE}}"
 CONTAINER_NAME="${CONTAINER_NAME:?CONTAINER_NAME must be set in ${RUNTIME_CONFIG_FILE}}"
@@ -49,39 +39,7 @@ GH_TOKEN="${GH_TOKEN:-}"
 HF_TOKEN="${HF_TOKEN:-}"
 HUGGINGFACE_TOKEN="${HUGGINGFACE_TOKEN:-}"
 WANDB_API_KEY="${WANDB_API_KEY:-}"
-
-# Optional Research Memory connection. Password mode is intentionally simple
-# for this personal server: host, user, and password live only in ignored
-# runtime.env and the server grants all-project RPC access. The legacy root
-# mode keeps project-scoped key mounts for users who still need it.
-RESEARCH_MEMORY_ROOT="${RESEARCH_MEMORY_ROOT:-}"
-RESEARCH_MEMORY_HOST="${RESEARCH_MEMORY_HOST:-}"
-RESEARCH_MEMORY_USER="${RESEARCH_MEMORY_USER:-}"
-RESEARCH_MEMORY_PASSWORD="${RESEARCH_MEMORY_PASSWORD:-}"
-RESEARCH_MEMORY_PROJECT="${RESEARCH_MEMORY_PROJECT:-}"
-RESEARCH_MEMORY_ENABLED=0
-RESEARCH_MEMORY_MODE=""
-if [[ -n "${RESEARCH_MEMORY_HOST}" || -n "${RESEARCH_MEMORY_USER}" || -n "${RESEARCH_MEMORY_PASSWORD}" ]]; then
-  RESEARCH_MEMORY_ENABLED=1
-  RESEARCH_MEMORY_MODE="password"
-elif [[ -n "${RESEARCH_MEMORY_ROOT}" ]]; then
-  RESEARCH_MEMORY_ENABLED=1
-  RESEARCH_MEMORY_MODE="key"
-fi
-RESEARCH_MEMORY_CLIENT_DIR=""
-RESEARCH_MEMORY_CONFIG=""
-RESEARCH_MEMORY_IDENTITY_FILE=""
-RESEARCH_MEMORY_KNOWN_HOSTS=""
-RESEARCH_MEMORY_SSH_CONFIG=""
 ####################################
-
-RESEARCH_MEMORY_CONTAINER_DIR="/run/research-memory"
-RESEARCH_MEMORY_CONTAINER_CLIENT_DIR="/opt/research-memory-client"
-RESEARCH_MEMORY_CONTAINER_CONFIG="${RESEARCH_MEMORY_CONTAINER_DIR}/client.json"
-RESEARCH_MEMORY_CONTAINER_IDENTITY="${RESEARCH_MEMORY_CONTAINER_DIR}/id_ed25519"
-RESEARCH_MEMORY_CONTAINER_KNOWN_HOSTS="${RESEARCH_MEMORY_CONTAINER_DIR}/known_hosts"
-RESEARCH_MEMORY_CONTAINER_SSH_CONFIG="${RESEARCH_MEMORY_CONTAINER_DIR}/ssh_config"
-RESEARCH_MEMORY_LAYOUT="v3"
 
 TERM_VALUE="${TERM:-xterm-256color}"
 COLORTERM_VALUE="${COLORTERM:-truecolor}"
@@ -100,7 +58,6 @@ ENV_ARGS=(
 MOUNT_ARGS=()
 PORT_ARGS=()
 EXTRA_DOCKER_ARGS=()
-RESEARCH_MEMORY_MOUNTS=()
 
 add_list_args() {
   local flag="$1"
@@ -122,229 +79,6 @@ append_port_arg() {
   local flag="$1"
   local value="$2"
   PORT_ARGS+=("${flag}" "${value}")
-}
-
-die() {
-  echo "Error: $*" >&2
-  exit 1
-}
-
-absolute_research_memory_file() {
-  local label="$1"
-  local candidate="$2"
-  local link_target
-
-  [[ -n "${candidate}" ]] || die "${label} must be set when RESEARCH_MEMORY_ENABLED=1"
-  if [[ "${candidate}" == "~/"* ]]; then
-    candidate="${HOME}/${candidate:2}"
-  fi
-  if [[ "${candidate}" == *$'\n'* || "${candidate}" == *$'\r'* || \
-        "${candidate}" == *$'\t'* || "${candidate}" == *,* ]]; then
-    die "${label} path contains an unsupported character"
-  fi
-  while [[ -L "${candidate}" ]]; do
-    link_target="$(readlink "${candidate}")" || die "cannot resolve ${label}: ${candidate}"
-    if [[ "${link_target}" == /* ]]; then
-      candidate="${link_target}"
-    else
-      candidate="$(dirname -- "${candidate}")/${link_target}"
-    fi
-  done
-  [[ -f "${candidate}" ]] || die "${label} must be an existing file: ${candidate}"
-  (
-    cd -P -- "$(dirname -- "${candidate}")"
-    printf '%s/%s\n' "$(pwd -P)" "$(basename -- "${candidate}")"
-  )
-}
-
-absolute_research_memory_dir() {
-  local label="$1"
-  local candidate="$2"
-
-  [[ -n "${candidate}" ]] || die "${label} must be set when RESEARCH_MEMORY_ENABLED=1"
-  if [[ "${candidate}" == "~/"* ]]; then
-    candidate="${HOME}/${candidate:2}"
-  fi
-  if [[ "${candidate}" == *$'\n'* || "${candidate}" == *$'\r'* || \
-        "${candidate}" == *$'\t'* || "${candidate}" == *,* ]]; then
-    die "${label} path contains an unsupported character"
-  fi
-  [[ -d "${candidate}" ]] || die "${label} must be an existing directory: ${candidate}"
-  (
-    cd -P -- "${candidate}"
-    pwd -P
-  )
-}
-
-append_research_memory_mount() {
-  local source="$1"
-  local destination="$2"
-
-  append_mount_arg --mount "type=bind,src=${source},dst=${destination},readonly"
-  RESEARCH_MEMORY_MOUNTS+=("${source}"$'\t'"${destination}")
-}
-
-configure_password_research_memory() {
-  [[ -n "${RESEARCH_MEMORY_HOST}" && -n "${RESEARCH_MEMORY_USER}" && -n "${RESEARCH_MEMORY_PASSWORD}" ]] || \
-    die "RESEARCH_MEMORY_HOST, RESEARCH_MEMORY_USER, and RESEARCH_MEMORY_PASSWORD must be set together"
-  ENV_ARGS+=(
-    -e "RESEARCH_MEMORY_ENABLED=1"
-    -e "RESEARCH_MEMORY_MODE=password"
-    -e "RESEARCH_MEMORY_LAYOUT=${RESEARCH_MEMORY_LAYOUT}"
-    -e "RESEARCH_MEMORY_MEMCTL=${RESEARCH_MEMORY_CONTAINER_CLIENT_DIR}/memctl.py"
-    -e "MEMORY_HOST=${RESEARCH_MEMORY_HOST}"
-    -e "MEMORY_USER=${RESEARCH_MEMORY_USER}"
-    -e "MEMORY_PASSWORD=${RESEARCH_MEMORY_PASSWORD}"
-    -e "MEMORY_PROJECT=${RESEARCH_MEMORY_PROJECT}"
-  )
-}
-
-configure_key_research_memory() {
-
-  RESEARCH_MEMORY_ROOT="$(absolute_research_memory_dir \
-    RESEARCH_MEMORY_ROOT "${RESEARCH_MEMORY_ROOT}")"
-
-  RESEARCH_MEMORY_CLIENT_DIR="$(absolute_research_memory_dir \
-    RESEARCH_MEMORY_ROOT/client "${RESEARCH_MEMORY_ROOT}/client")"
-  [[ -f "${RESEARCH_MEMORY_CLIENT_DIR}/memctl.py" ]] || \
-    die "RESEARCH_MEMORY_ROOT/client must contain memctl.py: ${RESEARCH_MEMORY_CLIENT_DIR}"
-  [[ -f "${RESEARCH_MEMORY_CLIENT_DIR}/profiles.py" ]] || \
-    die "RESEARCH_MEMORY_ROOT/client must contain profiles.py: ${RESEARCH_MEMORY_CLIENT_DIR}"
-  RESEARCH_MEMORY_CONFIG="$(absolute_research_memory_file \
-    RESEARCH_MEMORY_ROOT/client.json "${RESEARCH_MEMORY_ROOT}/client.json")"
-  RESEARCH_MEMORY_IDENTITY_FILE="$(absolute_research_memory_file \
-    RESEARCH_MEMORY_ROOT/id_ed25519 "${RESEARCH_MEMORY_ROOT}/id_ed25519")"
-  RESEARCH_MEMORY_KNOWN_HOSTS="$(absolute_research_memory_file \
-    RESEARCH_MEMORY_ROOT/known_hosts "${RESEARCH_MEMORY_ROOT}/known_hosts")"
-  if [[ -e "${RESEARCH_MEMORY_ROOT}/ssh_config" || -L "${RESEARCH_MEMORY_ROOT}/ssh_config" ]]; then
-    RESEARCH_MEMORY_SSH_CONFIG="$(absolute_research_memory_file \
-      RESEARCH_MEMORY_ROOT/ssh_config "${RESEARCH_MEMORY_ROOT}/ssh_config")"
-  fi
-
-  append_research_memory_mount \
-    "${RESEARCH_MEMORY_CLIENT_DIR}" "${RESEARCH_MEMORY_CONTAINER_CLIENT_DIR}"
-  append_research_memory_mount \
-    "${RESEARCH_MEMORY_CONFIG}" "${RESEARCH_MEMORY_CONTAINER_CONFIG}"
-  append_research_memory_mount \
-    "${RESEARCH_MEMORY_IDENTITY_FILE}" "${RESEARCH_MEMORY_CONTAINER_IDENTITY}"
-  append_research_memory_mount \
-    "${RESEARCH_MEMORY_KNOWN_HOSTS}" "${RESEARCH_MEMORY_CONTAINER_KNOWN_HOSTS}"
-  if [[ -n "${RESEARCH_MEMORY_SSH_CONFIG}" ]]; then
-    append_research_memory_mount \
-      "${RESEARCH_MEMORY_SSH_CONFIG}" "${RESEARCH_MEMORY_CONTAINER_SSH_CONFIG}"
-  fi
-
-  # The mounted config supplies host/user/default-profile details. The path
-  # overrides below make it use only the in-container read-only files.
-  ENV_ARGS+=(
-    -e "RESEARCH_MEMORY_ENABLED=1"
-    -e "RESEARCH_MEMORY_LAYOUT=${RESEARCH_MEMORY_LAYOUT}"
-    -e "RESEARCH_MEMORY_MEMCTL=${RESEARCH_MEMORY_CONTAINER_CLIENT_DIR}/memctl.py"
-    -e "RESEARCH_MEMORY_PROFILE="
-    -e "MEMORY_PROFILE="
-    -e "MEMORY_CONFIG=${RESEARCH_MEMORY_CONTAINER_CONFIG}"
-    -e "MEMORY_IDENTITY_FILE=${RESEARCH_MEMORY_CONTAINER_IDENTITY}"
-    -e "MEMORY_KNOWN_HOSTS=${RESEARCH_MEMORY_CONTAINER_KNOWN_HOSTS}"
-  )
-  if [[ -n "${RESEARCH_MEMORY_SSH_CONFIG}" ]]; then
-    ENV_ARGS+=(-e "MEMORY_SSH_CONFIG=${RESEARCH_MEMORY_CONTAINER_SSH_CONFIG}")
-  fi
-}
-
-configure_research_memory() {
-  [[ "${RESEARCH_MEMORY_ENABLED}" == "1" ]] || return
-  if [[ "${RESEARCH_MEMORY_MODE}" == "password" ]]; then
-    configure_password_research_memory
-  else
-    configure_key_research_memory
-  fi
-}
-
-existing_container_has_research_memory_mount() {
-  local source="$1"
-  local destination="$2"
-  local mounted_source mounted_destination mounted_rw
-
-  while IFS=$'\t' read -r mounted_source mounted_destination mounted_rw; do
-    if [[ "${mounted_source}" == "${source}" && \
-          "${mounted_destination}" == "${destination}" && \
-          "${mounted_rw}" == "false" ]]; then
-      return 0
-    fi
-  done < <(docker inspect -f '{{range .Mounts}}{{printf "%s\t%s\t%t\n" .Source .Destination .RW}}{{end}}' "${CONTAINER_NAME}")
-  return 1
-}
-
-existing_container_has_any_research_memory_mount() {
-  local mounted_destination
-
-  while IFS= read -r mounted_destination; do
-    case "${mounted_destination}" in
-      "${RESEARCH_MEMORY_CONTAINER_CLIENT_DIR}"|"${RESEARCH_MEMORY_CONTAINER_DIR}"/*)
-        return 0
-        ;;
-    esac
-  done < <(docker inspect -f '{{range .Mounts}}{{printf "%s\\n" .Destination}}{{end}}' "${CONTAINER_NAME}")
-  return 1
-}
-
-existing_container_has_research_memory_layout() {
-  docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "${CONTAINER_NAME}" | \
-    grep -Fxq "RESEARCH_MEMORY_LAYOUT=${RESEARCH_MEMORY_LAYOUT}"
-}
-
-existing_container_has_research_memory_mode() {
-  docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "${CONTAINER_NAME}" | \
-    grep -Fxq "RESEARCH_MEMORY_MODE=${RESEARCH_MEMORY_MODE}"
-}
-
-validate_existing_research_memory_mounts() {
-  if [[ "${RESEARCH_MEMORY_ENABLED}" != "1" ]]; then
-    if existing_container_has_any_research_memory_mount; then
-      echo "Error: existing container '${CONTAINER_NAME}' still has research-memory mounts while RESEARCH_MEMORY_ROOT is empty." >&2
-      echo "Recreate it once to detach those mounts: AUTO_RECREATE=1 bash ${BASH_SOURCE[0]}" >&2
-      exit 1
-    fi
-    return
-  fi
-
-  if [[ "${RESEARCH_MEMORY_MODE}" == "password" ]]; then
-    if existing_container_has_any_research_memory_mount; then
-      echo "Error: existing container '${CONTAINER_NAME}' still has legacy key-mode research-memory mounts." >&2
-      echo "Recreate it once to remove those mounts: AUTO_RECREATE=1 bash ${BASH_SOURCE[0]}" >&2
-      exit 1
-    fi
-    if ! existing_container_has_research_memory_layout || \
-        ! existing_container_has_research_memory_mode; then
-      echo "Error: existing container '${CONTAINER_NAME}' was not created for password-mode research memory." >&2
-      echo "Recreate it once with AUTO_RECREATE=1: AUTO_RECREATE=1 bash ${BASH_SOURCE[0]}" >&2
-      exit 1
-    fi
-    return
-  fi
-
-  if ! existing_container_has_research_memory_layout; then
-    echo "Error: existing container '${CONTAINER_NAME}' uses an older research-memory layout." >&2
-    echo "Recreate it once with AUTO_RECREATE=1: AUTO_RECREATE=1 bash ${BASH_SOURCE[0]}" >&2
-    exit 1
-  fi
-
-  local mount source destination
-  local -a missing=()
-  for mount in "${RESEARCH_MEMORY_MOUNTS[@]}"; do
-    source="${mount%%$'\t'*}"
-    destination="${mount#*$'\t'}"
-    if ! existing_container_has_research_memory_mount "${source}" "${destination}"; then
-      missing+=("${destination}")
-    fi
-  done
-
-  if ((${#missing[@]})); then
-    echo "Error: existing container '${CONTAINER_NAME}' does not have the required read-only research-memory mount(s): ${missing[*]}" >&2
-    echo "Docker cannot add these mounts through docker exec." >&2
-    echo "Recreate it once with AUTO_RECREATE=1: AUTO_RECREATE=1 bash ${BASH_SOURCE[0]}" >&2
-    exit 1
-  fi
 }
 
 docker_socket_gid() {
@@ -373,7 +107,6 @@ validate_volume_hosts() {
 
 validate_volume_hosts "${VOLUMES}"
 validate_volume_hosts "${EXTRA_VOLUMES}"
-configure_research_memory
 add_list_args -v "${VOLUMES}" append_mount_arg
 add_list_args -v "${EXTRA_VOLUMES}" append_mount_arg
 add_list_args -p "${PORTS}" append_port_arg
@@ -403,7 +136,6 @@ if docker ps -a --format '{{.Names}}' | grep -Fxq "${CONTAINER_NAME}"; then
       echo "Error: container exists in docker ps output but cannot be inspected: ${CONTAINER_NAME}" >&2
       exit 1
     fi
-    validate_existing_research_memory_mounts
     if ! docker start "${CONTAINER_NAME}" >/dev/null; then
       echo "Error: failed to start existing container: ${CONTAINER_NAME}" >&2
       echo "Remove it and rerun: docker rm -f ${CONTAINER_NAME}" >&2

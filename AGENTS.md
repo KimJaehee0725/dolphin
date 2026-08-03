@@ -1,21 +1,23 @@
 # Dolphin agent instructions
 
-## Shared research memory
+## Repository-local research history
 
-At the first substantive task in each Dolphin container session, use the
-installed `research-memory` skill. In password mode, list projects and ask the
-user which memory to use unless `RESEARCH_MEMORY_PROJECT` was supplied; in key
-mode, run `research-memory note list` before relying on shared context. If it
-is unavailable, ask the user whether to enable Research Memory. On consent,
-give the Docker-host setup path in that skill; never print or edit passwords,
-keys, or runtime configuration inside the container.
+At the first substantive task in each Dolphin container session, use the installed
+`track-research-history` skill. Run its read-only `start --query "<task terms>"`
+command before project work. If the repository has no `history/` directory, run
+`bootstrap` first.
 
-When the availability check succeeds, consult the default project's relevant
-notes before project work. Before completing a non-trivial task, record any
-important decision, experiment result, or project change through the mounted
-client, using the conflict-safe write procedure in the skill. Do not create
-notes for trivial chat or routine checks.
+All durable memory belongs to the current repository's Git-tracked `history/*.md`
+files. Ranked recall must use the skill's vendored BM25S backend only; do not add
+SQLite, a central memory service, password mode, SSH RPC, or a separate data vault.
+
+Before completing a non-trivial task, record important decisions, experiments, or
+project changes with the narrowest matching command, then run `finish`. Do not
+create records for trivial chat or routine read-only checks. Never store secrets,
+credentials, raw private data, or hidden chain-of-thought in history.
+
+For human browsing, open the repository's `history/` directory as an Obsidian vault
+and start at `PROJECT_MAP.md`. Rebuild portable wikilinks with `obsidian-map` or
+`index`; keep `.obsidian/` untracked.
 
 `config/runtime.env` is local-only. Never read, print, copy, or commit it.
-Use the mounted client rather than administering SSH keys, services, or server
-storage directly.

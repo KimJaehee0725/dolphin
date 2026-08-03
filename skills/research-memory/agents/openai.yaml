@@ -1,4 +1,0 @@
-interface:
-  display_name: "Research Memory"
-  short_description: "Use shared project memory safely"
-  default_prompt: "Use $research-memory to recall and update this project memory safely."
