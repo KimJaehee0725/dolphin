@@ -102,9 +102,13 @@ RUN uv python install 3.12 \
 # Install the repo-local Markdown history skill. It vendors BM25S and keeps all
 # project memory inside each repository's history/ directory.
 ARG TRACK_RESEARCH_HISTORY_REPOSITORY=https://github.com/KimJaehee0725/track-research-history.git
-ARG TRACK_RESEARCH_HISTORY_REF=main
-RUN git clone --depth 1 --branch "${TRACK_RESEARCH_HISTORY_REF}" \
-      "${TRACK_RESEARCH_HISTORY_REPOSITORY}" /tmp/track-research-history-source \
+ARG TRACK_RESEARCH_HISTORY_REF=c90f27c23928c17688fdfa7c3d06bb3e6e593f45
+RUN git init -q /tmp/track-research-history-source \
+ && git -C /tmp/track-research-history-source remote add origin \
+      "${TRACK_RESEARCH_HISTORY_REPOSITORY}" \
+ && git -C /tmp/track-research-history-source fetch -q --depth 1 origin \
+      "${TRACK_RESEARCH_HISTORY_REF}" \
+ && git -C /tmp/track-research-history-source checkout -q --detach FETCH_HEAD \
  && install -d -m 0755 "${HOME}/.codex/skills/track-research-history" \
  && cp -a /tmp/track-research-history-source/SKILL.md \
       /tmp/track-research-history-source/agents \
@@ -113,7 +117,9 @@ RUN git clone --depth 1 --branch "${TRACK_RESEARCH_HISTORY_REF}" \
       "${HOME}/.codex/skills/track-research-history/" \
  && chmod 0755 "${HOME}/.codex/skills/track-research-history/scripts/history.py" \
  && "${HOME}/.venv/bin/python" \
-      "${HOME}/.codex/skills/track-research-history/scripts/history.py" --help >/dev/null \
+      "${HOME}/.codex/skills/track-research-history/scripts/history.py" start --help >/dev/null \
+ && printf '%s\n' "${TRACK_RESEARCH_HISTORY_REF}" \
+      > "${HOME}/.codex/skills/track-research-history/REVISION" \
  && rm -rf /tmp/track-research-history-source
 
 RUN mkdir -p "${NPM_CONFIG_PREFIX}" \
@@ -159,58 +165,6 @@ RUN git config --global init.defaultBranch main \
  && git config --global pull.rebase false \
  && git config --global user.name "${GIT_NAME}" \
  && git config --global user.email "${GIT_EMAIL}"
-
-RUN mkdir -p "${HOME}/.local/bin" \
- && cat > "${HOME}/.local/bin/init-dev-auth" <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-
-github_token="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
-hf_token="${HF_TOKEN:-${HUGGINGFACE_TOKEN:-}}"
-wandb_token="${WANDB_API_KEY:-}"
-
-if [[ -f "${HOME}/.config/dev-tokens/.tokens" ]]; then
-  set -a
-  # shellcheck disable=SC1090
-  source "${HOME}/.config/dev-tokens/.tokens"
-  set +a
-  github_token="${GITHUB_TOKEN:-${GH_TOKEN:-${github_token}}}"
-  hf_token="${HF_TOKEN:-${HUGGINGFACE_TOKEN:-${hf_token}}}"
-  wandb_token="${WANDB_API_KEY:-${wandb_token}}"
-fi
-
-if [[ -n "${github_token}" ]]; then
-  if command -v gh >/dev/null 2>&1 && ! gh auth status >/dev/null 2>&1; then
-    printf '%s\n' "${github_token}" | gh auth login --with-token >/dev/null
-  fi
-  if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-    gh auth setup-git >/dev/null
-  elif ! git config --global credential.https://github.com.helper >/dev/null; then
-    git config --global credential.https://github.com.helper store
-    printf 'protocol=https\nhost=github.com\nusername=x-access-token\npassword=%s\n\n' "${github_token}" | git credential approve
-  fi
-fi
-
-if [[ -n "${hf_token}" ]]; then
-  mkdir -p "${HOME}/.cache/huggingface" "${HOME}/.config/huggingface"
-  chmod 700 "${HOME}/.cache/huggingface" "${HOME}/.config/huggingface"
-  printf '%s' "${hf_token}" > "${HOME}/.cache/huggingface/token"
-  printf '%s' "${hf_token}" > "${HOME}/.config/huggingface/token"
-  chmod 600 "${HOME}/.cache/huggingface/token" "${HOME}/.config/huggingface/token"
-fi
-
-if [[ -n "${wandb_token}" ]]; then
-  rm -rf "${HOME}/.netrc"
-  cat > "${HOME}/.netrc" <<NETRC
-machine api.wandb.ai
-  login user
-  password ${wandb_token}
-NETRC
-  chmod 600 "${HOME}/.netrc"
-fi
-EOF
-
-RUN chmod 700 "${HOME}/.local/bin/init-dev-auth"
 
 # Global guidance points agents at the installed repo-local BM25S skill. No
 # passwords, SSH keys, or memory service configuration are copied into images.
@@ -300,7 +254,6 @@ alias ll='eza -lah --icons --git --group-directories-first'
 alias lt='eza --tree --level=2 --icons'
 alias cat='bat'
 alias cdbase='cd /workspace'
-alias auth-init='init-dev-auth'
 
 bindkey '^[[A' history-substring-search-up
 bindkey '^[[B' history-substring-search-down

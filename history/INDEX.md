@@ -1,6 +1,6 @@
 # History Index
 
-Generated: 2026-08-03 05:24 +0000
+Generated: 2026-08-14 05:22 +0000
 
 ## Current Context
 
@@ -11,6 +11,7 @@ Generated: 2026-08-03 05:24 +0000
 
 ### daily
 
+- `history/daily/2026-08-14.md` - Daily Log - 2026-08-14
 - `history/daily/2026-08-03.md` - Daily Log - 2026-08-03
 - `history/daily/2026-07-25.md` - Daily Log - 2026-07-25
 - `history/daily/2026-07-27.md` - Daily Log - 2026-07-27
@@ -18,6 +19,7 @@ Generated: 2026-08-03 05:24 +0000
 
 ### changes
 
+- `history/changes/2026-08-14-052224-research-history-dolphin-docker.md` - Change - 단순화된 research history에 맞춰 Dolphin Docker 구성 정리
 - `history/changes/2026-08-03-052448-replace-central-memory-with-local-bm25s-history.md` - Change - Replace central memory with local BM25S history
 - `history/changes/2026-07-25-160832-research-memory.md` - Change - Research Memory 자동 조회와 작업 종료 기록 의무 명시
 - `history/changes/2026-07-25-143723-dolphin-research-memory.md` - Change - Dolphin 에이전트의 Research Memory 동의 기반 설정 추가

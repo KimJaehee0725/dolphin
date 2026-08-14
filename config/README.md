@@ -1,95 +1,57 @@
 # Docker Runtime Config
 
-`build_image.sh` and `make_container.sh` read one local runtime file:
-`config/runtime.env`.
-
-## Setup
-
-Create the local runtime file from the shared example:
+Both helper scripts read the local-only `config/runtime.env`. Create it once:
 
 ```bash
 cp config/runtime.env.example config/runtime.env
-vim config/runtime.env
 chmod 600 config/runtime.env
 ```
 
-The real `config/runtime.env` is intentionally ignored by git because it may
-contain credentials.
-
-## Runtime Settings
-
-Image build settings, container runtime settings, volumes, ports, and optional
-auth values are managed in `config/runtime.env`.
+Only environment-specific values belong there:
 
 ```bash
-IMAGE_NAME=jaehee-base:0404
-DOCKERFILE_PATH=Dockerfile
-BUILD_CONTEXT_DIR=.
-NO_CACHE=0
-
-CONTAINER_NAME=jaehee-contaccum-refine
-AUTO_RECREATE=0
+IMAGE_NAME=jaehee-base:latest
+CONTAINER_NAME=jaehee-dev
 WORKSPACE_DIR=/workspace
-VOLUMES="/home/jaeheekim/codes:/workspace /media/data:/data"
-EXTRA_VOLUMES=
-PORTS=9204:9204
-MOUNT_DOCKER_SOCKET=1
+VOLUMES="/home/jaeheekim/codes:/workspace/codes /data1/jaehee:/data1"
+PORTS="9208:9208 9450:9450"
+MOUNT_DOCKER_SOCKET=0
 
 GITHUB_TOKEN=
-GH_TOKEN=
 HF_TOKEN=
-HUGGINGFACE_TOKEN=
 WANDB_API_KEY=
 ```
 
-`DOCKERFILE_PATH` and `BUILD_CONTEXT_DIR` may be absolute paths or paths relative
-to the repository root. Build the image with:
+Use whitespace or commas between multiple volume or port specifications. Empty
+`VOLUMES` and `PORTS` values are allowed.
+
+Build and run:
 
 ```bash
 bash build_image.sh
-```
-
-Use whitespace or commas for multiple entries, e.g.:
-
-```bash
-PORTS="9204:9204 7860:7860"
-EXTRA_VOLUMES="/tmp:/tmp,/scratch:/scratch"
-```
-
-Start or attach to the container with:
-
-```bash
 bash make_container.sh
 ```
 
-If you change `VOLUMES`, `PORTS`, or `WORKSPACE_DIR` after a container has
-already been created, remove and recreate the container:
+The Dockerfile and build context are fixed to this repository. Use
+`bash build_image.sh --no-cache` only when the Docker cache must be discarded.
+
+The container runs a small persistent `sleep infinity` process and the helper
+opens shells with `docker exec`. Optional auth values are attached only to that
+shell session, so they are not stored in the container's configured environment.
+The old `GH_TOKEN` and `HUGGINGFACE_TOKEN` names remain accepted as aliases, but
+new configs should use the canonical names above.
+
+After changing the image, volumes, ports, working directory, or socket setting,
+recreate without opening a shell:
 
 ```bash
-docker rm -f jaehee-contaccum-refine
-bash make_container.sh
+bash make_container.sh --recreate --no-attach
 ```
 
-Alternatively, recreate it in one command:
+Docker socket access is disabled by default. Set `MOUNT_DOCKER_SOCKET=1` only
+when a trusted project really needs to control the host Docker daemon.
 
-```bash
-AUTO_RECREATE=1 bash make_container.sh
-```
-
-Auth values are passed from `runtime.env` through `docker run` and `docker exec`
-each time. Existing containers receive updated auth values on the next attach,
-but volume, port, and working-directory changes still require recreation.
-
-`MOUNT_DOCKER_SOCKET=1` mounts the host Docker daemon socket and adds the socket
-group to the dev container. This is required for helper scripts that start
-sibling containers.
-
-Legacy `config/.tokens`, `config/github/token`, `config/huggingface/token`, and
-`config/runtime_tmp.env` files are no longer read by the scripts.
-
-## Research History
-
-No research-memory host, password, key, profile, or mount belongs in
-`runtime.env`. The image already contains the repo-local `track-research-history`
-skill; each mounted project stores and searches its own `history/` Markdown with
-vendored BM25S.
+No research-history host, password, key, profile, service, database, or extra
+mount belongs in `runtime.env`. The image contains the repository-local
+`track-research-history` skill, and each project owns its Git-tracked
+`history/*.md` files.

@@ -6,7 +6,7 @@ Docker-based development environment for research and coding agents.
 
 - CUDA 12.2 Ubuntu base image with Node.js, Python 3.12 via `uv`, GitHub CLI, Docker CLI, tmux, zsh, and common terminal tools.
 - OpenAI Codex CLI and Claude Code.
-- Repository-local Markdown research history with vendored BM25S recall and Obsidian project maps.
+- The pinned repository-local `track-research-history` skill with vendored BM25S recall and Obsidian project maps.
 
 ## Runtime Config
 
@@ -25,6 +25,11 @@ bash build_image.sh
 bash make_container.sh
 ```
 
+Use `bash build_image.sh --no-cache` for a clean rebuild and
+`bash make_container.sh --recreate --no-attach` after changing image or mount
+settings. The runtime file only carries machine-specific names, mounts, ports,
+an optional Docker-socket switch, and optional session credentials.
+
 See [config/README.md](config/README.md) for the full runtime configuration notes.
 
 ## Research History
@@ -38,6 +43,7 @@ password mode, SSH RPC, or extra runtime mount.
 python3 ~/.codex/skills/track-research-history/scripts/history.py bootstrap
 python3 ~/.codex/skills/track-research-history/scripts/history.py start --query "current task"
 python3 ~/.codex/skills/track-research-history/scripts/history.py search "decision or experiment"
+python3 ~/.codex/skills/track-research-history/scripts/history.py finish
 ```
 
 Open a project's `history/` folder directly in Obsidian and use

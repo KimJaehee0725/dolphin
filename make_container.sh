@@ -1,11 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-##### env-overridable settings #####
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DOCKER_CONFIG_DIR="${SCRIPT_DIR}/config"
-RUNTIME_CONFIG_FILE="${DOCKER_CONFIG_DIR}/runtime.env"
-AUTO_RECREATE_OVERRIDE="${AUTO_RECREATE-}"
+RUNTIME_CONFIG_FILE="${SCRIPT_DIR}/config/runtime.env"
+RECREATE=0
+ATTACH=1
+
+usage() {
+  cat <<'EOF'
+Usage: make_container.sh [--recreate] [--no-attach]
+
+Create or reuse the Dolphin container, then open a login shell.
+  --recreate   Remove and recreate an existing container.
+  --no-attach  Leave the container running without opening a shell.
+EOF
+}
+
+while (($#)); do
+  case "$1" in
+    --recreate) RECREATE=1 ;;
+    --no-attach) ATTACH=0 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Error: unknown option: $1" >&2; usage >&2; exit 2 ;;
+  esac
+  shift
+done
 
 if [[ ! -f "${RUNTIME_CONFIG_FILE}" ]]; then
   echo "Error: missing runtime config file: ${RUNTIME_CONFIG_FILE}" >&2
@@ -19,84 +38,40 @@ set +a
 
 IMAGE_NAME="${IMAGE_NAME:?IMAGE_NAME must be set in ${RUNTIME_CONFIG_FILE}}"
 CONTAINER_NAME="${CONTAINER_NAME:?CONTAINER_NAME must be set in ${RUNTIME_CONFIG_FILE}}"
-if [[ -n "${AUTO_RECREATE_OVERRIDE}" ]]; then
-  AUTO_RECREATE="${AUTO_RECREATE_OVERRIDE}"
-else
-  AUTO_RECREATE="${AUTO_RECREATE:-0}"
-fi
-
-# Whitespace- or comma-separated lists.
-# Example:
-#   PORTS="9204:9204 7860:7860"
-#   VOLUMES="/home/jaeheekim/codes:/workspace /media/data:/data"
-PORTS="${PORTS:?PORTS must be set in ${RUNTIME_CONFIG_FILE}}"
-VOLUMES="${VOLUMES:?VOLUMES must be set in ${RUNTIME_CONFIG_FILE}}"
-EXTRA_VOLUMES="${EXTRA_VOLUMES:-}"
-WORKSPACE_DIR="${WORKSPACE_DIR:?WORKSPACE_DIR must be set in ${RUNTIME_CONFIG_FILE}}"
+WORKSPACE_DIR="${WORKSPACE_DIR:-/workspace}"
+VOLUMES="${VOLUMES:-}"
+PORTS="${PORTS:-}"
 MOUNT_DOCKER_SOCKET="${MOUNT_DOCKER_SOCKET:-0}"
-GITHUB_TOKEN="${GITHUB_TOKEN:-}"
-GH_TOKEN="${GH_TOKEN:-}"
-HF_TOKEN="${HF_TOKEN:-}"
-HUGGINGFACE_TOKEN="${HUGGINGFACE_TOKEN:-}"
-WANDB_API_KEY="${WANDB_API_KEY:-}"
-####################################
 
-TERM_VALUE="${TERM:-xterm-256color}"
-COLORTERM_VALUE="${COLORTERM:-truecolor}"
-TERM_PROGRAM_VALUE="${TERM_PROGRAM:-}"
+# Accept the old aliases without exposing two copies inside the container.
+GITHUB_TOKEN_VALUE="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
+HF_TOKEN_VALUE="${HF_TOKEN:-${HUGGINGFACE_TOKEN:-}}"
+WANDB_API_KEY_VALUE="${WANDB_API_KEY:-}"
 
-ENV_ARGS=(
-  -e "TERM=${TERM_VALUE}"
-  -e "COLORTERM=${COLORTERM_VALUE}"
-  -e "TERM_PROGRAM=${TERM_PROGRAM_VALUE}"
-  -e "GITHUB_TOKEN=${GITHUB_TOKEN}"
-  -e "GH_TOKEN=${GH_TOKEN}"
-  -e "HF_TOKEN=${HF_TOKEN}"
-  -e "HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN}"
-  -e "WANDB_API_KEY=${WANDB_API_KEY}"
+CREATE_ARGS=(
+  -d
+  --gpus all
+  --ipc=host
+  --name "${CONTAINER_NAME}"
+  --hostname "${CONTAINER_NAME}"
+  -w "${WORKSPACE_DIR}"
 )
-MOUNT_ARGS=()
-PORT_ARGS=()
-EXTRA_DOCKER_ARGS=()
 
-add_list_args() {
+append_list() {
   local flag="$1"
   local raw="${2//,/ }"
   local item
 
   for item in ${raw}; do
-    [[ -n "${item}" ]] && "$3" "${flag}" "${item}"
+    [[ -n "${item}" ]] && CREATE_ARGS+=("${flag}" "${item}")
   done
 }
-
-append_mount_arg() {
-  local flag="$1"
-  local value="$2"
-  MOUNT_ARGS+=("${flag}" "${value}")
-}
-
-append_port_arg() {
-  local flag="$1"
-  local value="$2"
-  PORT_ARGS+=("${flag}" "${value}")
-}
-
-docker_socket_gid() {
-  if stat -c '%g' /var/run/docker.sock >/dev/null 2>&1; then
-    stat -c '%g' /var/run/docker.sock
-  else
-    stat -f '%g' /var/run/docker.sock
-  fi
-}
-
-CONTAINER_COMMAND=(zsh -lc "init-dev-auth >/dev/null 2>&1 || true; exec zsh -l")
 
 validate_volume_hosts() {
   local raw="${1//,/ }"
   local volume host_path
 
   for volume in ${raw}; do
-    [[ -z "${volume}" ]] && continue
     host_path="${volume%%:*}"
     if [[ "${host_path}" = /* && ! -e "${host_path}" ]]; then
       echo "Error: volume host path does not exist: ${host_path}" >&2
@@ -106,85 +81,68 @@ validate_volume_hosts() {
 }
 
 validate_volume_hosts "${VOLUMES}"
-validate_volume_hosts "${EXTRA_VOLUMES}"
-add_list_args -v "${VOLUMES}" append_mount_arg
-add_list_args -v "${EXTRA_VOLUMES}" append_mount_arg
-add_list_args -p "${PORTS}" append_port_arg
+append_list -v "${VOLUMES}"
+append_list -p "${PORTS}"
 
-if [[ "${MOUNT_DOCKER_SOCKET}" == "1" ]]; then
-  if [[ ! -S /var/run/docker.sock ]]; then
-    echo "Error: MOUNT_DOCKER_SOCKET=1 but /var/run/docker.sock is not available on host." >&2
+case "${MOUNT_DOCKER_SOCKET}" in
+  0) ;;
+  1)
+    if [[ ! -S /var/run/docker.sock ]]; then
+      echo "Error: MOUNT_DOCKER_SOCKET=1 but /var/run/docker.sock is unavailable." >&2
+      exit 1
+    fi
+    CREATE_ARGS+=(
+      -v /var/run/docker.sock:/var/run/docker.sock
+      --group-add "$(stat -c '%g' /var/run/docker.sock)"
+    )
+    ;;
+  *)
+    echo "Error: MOUNT_DOCKER_SOCKET must be 0 or 1." >&2
     exit 1
-  fi
-  MOUNT_ARGS+=(-v /var/run/docker.sock:/var/run/docker.sock)
-  DOCKER_SOCK_GID="$(docker_socket_gid)"
-  EXTRA_DOCKER_ARGS+=(--group-add "${DOCKER_SOCK_GID}")
-elif [[ "${MOUNT_DOCKER_SOCKET}" != "0" ]]; then
-  echo "Error: MOUNT_DOCKER_SOCKET must be 0 or 1 in ${RUNTIME_CONFIG_FILE}" >&2
+    ;;
+esac
+
+container_exists() {
+  docker container inspect "${CONTAINER_NAME}" >/dev/null 2>&1
+}
+
+if ((RECREATE)) && container_exists; then
+  docker rm -f "${CONTAINER_NAME}" >/dev/null
+fi
+
+if ! container_exists; then
+  docker run "${CREATE_ARGS[@]}" "${IMAGE_NAME}" sleep infinity >/dev/null
+else
+  echo "Reusing existing container: ${CONTAINER_NAME}" >&2
+  echo "Use --recreate after changing volumes, ports, or the image." >&2
+fi
+
+if [[ "$(docker inspect -f '{{.State.Running}}' "${CONTAINER_NAME}")" != "true" ]]; then
+  docker start "${CONTAINER_NAME}" >/dev/null
+fi
+
+if ! docker exec "${CONTAINER_NAME}" test -d "${WORKSPACE_DIR}"; then
+  echo "Error: WORKSPACE_DIR does not exist in ${CONTAINER_NAME}: ${WORKSPACE_DIR}" >&2
+  echo "Recreate it with: bash make_container.sh --recreate" >&2
   exit 1
 fi
 
-# If the container already exists, reuse it.
-if docker ps -a --format '{{.Names}}' | grep -Fxq "${CONTAINER_NAME}"; then
-  echo "Reusing existing container: ${CONTAINER_NAME}" >&2
-  echo "Note: changed VOLUMES/PORTS/WORKSPACE_DIR only apply after removing and recreating the container." >&2
-
-  if [[ "${AUTO_RECREATE}" == "1" ]]; then
-    docker rm -f "${CONTAINER_NAME}" >/dev/null
-  else
-    if ! docker inspect "${CONTAINER_NAME}" >/dev/null 2>&1; then
-      echo "Error: container exists in docker ps output but cannot be inspected: ${CONTAINER_NAME}" >&2
-      exit 1
-    fi
-    if ! docker start "${CONTAINER_NAME}" >/dev/null; then
-      echo "Error: failed to start existing container: ${CONTAINER_NAME}" >&2
-      echo "Remove it and rerun: docker rm -f ${CONTAINER_NAME}" >&2
-      exit 1
-    fi
-    if ! docker exec -w / "${CONTAINER_NAME}" test -d "${WORKSPACE_DIR}"; then
-      old_workdir="$(docker inspect -f '{{.Config.WorkingDir}}' "${CONTAINER_NAME}" 2>/dev/null || true)"
-      echo "Error: WORKSPACE_DIR does not exist inside existing container: ${WORKSPACE_DIR}" >&2
-      if [[ -n "${old_workdir}" ]]; then
-        echo "Existing container image/workdir: ${old_workdir}" >&2
-      fi
-      echo "This usually means the container was created with old volume/workdir settings." >&2
-      echo "Remove and recreate it: docker rm -f ${CONTAINER_NAME} && bash ${BASH_SOURCE[0]}" >&2
-      echo "Or run once with AUTO_RECREATE=1: AUTO_RECREATE=1 bash ${BASH_SOURCE[0]}" >&2
-      exit 1
-    fi
-  fi
-fi
-
-if docker ps -a --format '{{.Names}}' | grep -Fxq "${CONTAINER_NAME}"; then
-  if [[ "$(docker inspect -f '{{.State.Running}}' "${CONTAINER_NAME}")" != "true" ]]; then
-    docker start "${CONTAINER_NAME}" >/dev/null
-  fi
-
-  docker exec -it \
-    "${ENV_ARGS[@]}" \
-    -w "${WORKSPACE_DIR}" \
-    "${CONTAINER_NAME}" \
-    "${CONTAINER_COMMAND[@]}"
-
+if ((!ATTACH)); then
+  echo "Container is running: ${CONTAINER_NAME}"
   exit 0
 fi
 
-DOCKER_ARGS=(
-  -it
-  --gpus all
-  --ipc=host
-  --name "${CONTAINER_NAME}"
-  --hostname "${CONTAINER_NAME}"
-  "${ENV_ARGS[@]}"
-  "${MOUNT_ARGS[@]}"
-  "${PORT_ARGS[@]}"
+SESSION_ARGS=(
+  -e "TERM=${TERM:-xterm-256color}"
+  -e "COLORTERM=${COLORTERM:-truecolor}"
+  -e "TERM_PROGRAM=${TERM_PROGRAM:-}"
 )
-if ((${#EXTRA_DOCKER_ARGS[@]})); then
-  DOCKER_ARGS+=("${EXTRA_DOCKER_ARGS[@]}")
-fi
-DOCKER_ARGS+=(-w "${WORKSPACE_DIR}")
+[[ -n "${GITHUB_TOKEN_VALUE}" ]] && SESSION_ARGS+=(-e "GITHUB_TOKEN=${GITHUB_TOKEN_VALUE}")
+[[ -n "${HF_TOKEN_VALUE}" ]] && SESSION_ARGS+=(-e "HF_TOKEN=${HF_TOKEN_VALUE}")
+[[ -n "${WANDB_API_KEY_VALUE}" ]] && SESSION_ARGS+=(-e "WANDB_API_KEY=${WANDB_API_KEY_VALUE}")
 
-docker run \
-  "${DOCKER_ARGS[@]}" \
-  "${IMAGE_NAME}" \
-  "${CONTAINER_COMMAND[@]}"
+docker exec -it \
+  "${SESSION_ARGS[@]}" \
+  -w "${WORKSPACE_DIR}" \
+  "${CONTAINER_NAME}" \
+  zsh -lc 'if [[ -n "${GITHUB_TOKEN:-}" ]]; then gh auth setup-git >/dev/null 2>&1 || true; fi; exec zsh -l'
