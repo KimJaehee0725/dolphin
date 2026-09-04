@@ -47,6 +47,7 @@ MOUNT_DOCKER_SOCKET="${MOUNT_DOCKER_SOCKET:-0}"
 GITHUB_TOKEN_VALUE="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
 HF_TOKEN_VALUE="${HF_TOKEN:-${HUGGINGFACE_TOKEN:-}}"
 WANDB_API_KEY_VALUE="${WANDB_API_KEY:-}"
+DSBA_LITELLM_API_KEY_VALUE="${DSBA_LITELLM_API_KEY:-}"
 
 CREATE_ARGS=(
   -d
@@ -127,6 +128,11 @@ if ! docker exec "${CONTAINER_NAME}" test -d "${WORKSPACE_DIR}"; then
   exit 1
 fi
 
+if [[ -n "${DSBA_LITELLM_API_KEY_VALUE}" ]]; then
+  printf '%s' "${DSBA_LITELLM_API_KEY_VALUE}" | docker exec -i "${CONTAINER_NAME}" \
+    sh -c 'umask 077; mkdir -p "$HOME/.config"; cat > "$HOME/.config/dsba-litellm.key"'
+fi
+
 if ((!ATTACH)); then
   echo "Container is running: ${CONTAINER_NAME}"
   exit 0
@@ -140,6 +146,7 @@ SESSION_ARGS=(
 [[ -n "${GITHUB_TOKEN_VALUE}" ]] && SESSION_ARGS+=(-e "GITHUB_TOKEN=${GITHUB_TOKEN_VALUE}")
 [[ -n "${HF_TOKEN_VALUE}" ]] && SESSION_ARGS+=(-e "HF_TOKEN=${HF_TOKEN_VALUE}")
 [[ -n "${WANDB_API_KEY_VALUE}" ]] && SESSION_ARGS+=(-e "WANDB_API_KEY=${WANDB_API_KEY_VALUE}")
+[[ -n "${DSBA_LITELLM_API_KEY_VALUE}" ]] && SESSION_ARGS+=(-e "DSBA_LITELLM_API_KEY=${DSBA_LITELLM_API_KEY_VALUE}")
 
 docker exec -it \
   "${SESSION_ARGS[@]}" \

@@ -18,11 +18,21 @@ vim config/runtime.env
 chmod 600 config/runtime.env
 ```
 
-`config/runtime.env` may contain tokens and is ignored by git. Build and start from the repo root:
+`config/runtime.env` may contain tokens and is ignored by git. Add the issued
+DSBA key as `DSBA_LITELLM_API_KEY=...`; the launcher stores it in a private
+container-local file sourced by `.zshrc`, so it remains available in later zsh
+sessions. Build and start from the repo root:
 
 ```bash
 bash build_image.sh
 bash make_container.sh
+```
+
+The image installs a shared `dsba_litellm` provider without changing the default
+OpenAI provider. Use it through the dedicated profile:
+
+```bash
+codex --profile dsba
 ```
 
 Use `bash build_image.sh --no-cache` for a clean rebuild and

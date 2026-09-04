@@ -170,6 +170,21 @@ RUN git config --global init.defaultBranch main \
 # passwords, SSH keys, or memory service configuration are copied into images.
 COPY --chown=${UID}:${GID} AGENTS.md /home/${USERNAME}/.codex/AGENTS.md
 
+# Keep the DSBA provider available without replacing Codex's default OpenAI
+# provider. The API key is supplied only at container runtime.
+RUN cat > "${HOME}/.codex/config.toml" <<'EOF'
+[model_providers.dsba_litellm]
+name = "DSBA LiteLLM"
+base_url = "https://dsba-server.duckdns.org:8022/llm/v1"
+env_key = "DSBA_LITELLM_API_KEY"
+wire_api = "responses"
+EOF
+
+RUN cat > "${HOME}/.codex/dsba.config.toml" <<'EOF'
+model = "gpt-5.6-sol"
+model_provider = "dsba_litellm"
+EOF
+
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended \
  && git clone --depth=1 https://github.com/romkatv/powerlevel10k.git \
       "${HOME}/.oh-my-zsh/custom/themes/powerlevel10k" \
@@ -226,6 +241,9 @@ EOF
 
 RUN cat > "${HOME}/.zshrc" <<'EOF'
 [ -f "$HOME/.config/terminal-env.sh" ] && source "$HOME/.config/terminal-env.sh"
+if [[ -f "$HOME/.config/dsba-litellm.key" ]]; then
+  export DSBA_LITELLM_API_KEY="$(< "$HOME/.config/dsba-litellm.key")"
+fi
 
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"

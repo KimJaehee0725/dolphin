@@ -20,6 +20,7 @@ MOUNT_DOCKER_SOCKET=0
 GITHUB_TOKEN=
 HF_TOKEN=
 WANDB_API_KEY=
+DSBA_LITELLM_API_KEY=
 ```
 
 Use whitespace or commas between multiple volume or port specifications. Empty
@@ -36,10 +37,24 @@ The Dockerfile and build context are fixed to this repository. Use
 `bash build_image.sh --no-cache` only when the Docker cache must be discarded.
 
 The container runs a small persistent `sleep infinity` process and the helper
-opens shells with `docker exec`. Optional auth values are attached only to that
-shell session, so they are not stored in the container's configured environment.
+opens shells with `docker exec`. GitHub, Hugging Face, and W&B auth values are
+attached only to that shell session. When `DSBA_LITELLM_API_KEY` is set, the
+helper writes it to `~/.config/dsba-litellm.key` inside the container with mode
+`600`; `.zshrc` reads that local file and exports the variable so subsequent zsh
+sessions retain the key. The key is never built into the image or committed to Git.
 The old `GH_TOKEN` and `HUGGINGFACE_TOKEN` names remain accepted as aliases, but
 new configs should use the canonical names above.
+
+The image provides the shared provider in `~/.codex/config.toml` and the DSBA
+model selection in `~/.codex/dsba.config.toml`. It intentionally leaves the
+default `model` and `model_provider` unset, preserving ordinary OpenAI sessions.
+Start the DSBA profile with:
+
+```bash
+codex --profile dsba
+codex --profile dsba --model gpt-5.6-terra
+codex --profile dsba --approve-for-me
+```
 
 After changing the image, volumes, ports, working directory, or socket setting,
 recreate without opening a shell:

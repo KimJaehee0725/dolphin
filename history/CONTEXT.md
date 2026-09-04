@@ -14,6 +14,8 @@ Last updated: 2026-08-14
 - 각 프로젝트의 Git-tracked `history/*.md`가 유일한 durable memory이며, vendored BM25S가 현재 Markdown을 in-memory 검색한다.
 - `history/PROJECT_MAP.md`의 상대 wikilink를 Obsidian viewer/backlink/graph 진입점으로 사용한다.
 - `jaehee-dev`는 `sleep infinity`로 유지하고, login shell과 선택적 인증 env는 `docker exec` 세션에만 전달한다.
+- image는 `~/.codex/config.toml`에 DSBA LiteLLM common provider를, `~/.codex/dsba.config.toml`에 DSBA 전용 model profile을 제공한다.
+- `make_container.sh`는 local-only `runtime.env`의 `DSBA_LITELLM_API_KEY`를 container-local mode 600 key file에 저장하고 `.zshrc`가 로드하게 한다.
 
 ## Current Decisions
 
@@ -21,6 +23,7 @@ Last updated: 2026-08-14
 - `make_container.sh`는 일반 volume/auth/runtime 설정만 전달하고 research history용 runtime 설정을 요구하지 않는다.
 - Dockerfile/build context와 recreate/no-cache 동작은 env 항목이 아니라 helper script와 명시적 CLI flag로 관리한다.
 - agent는 작업 시작 시 `start --query`, 비사소한 변경 후 record와 `finish`를 사용한다.
+- DSBA provider는 기본 provider로 고정하지 않고 `codex --profile dsba`로만 선택하여 기존 OpenAI 세션 탐색을 유지한다.
 
 ## Active Ideas
 

@@ -24,6 +24,7 @@ Open this `history/` directory as an Obsidian vault. These links stay repo-relat
 - [[changes/2026-07-27-132641-dolphin-research-memory|Change - Dolphin 비밀번호 기반 전체 프로젝트 Research Memory 연결]]
 - [[changes/2026-08-03-052448-replace-central-memory-with-local-bm25s-history|Change - Replace central memory with local BM25S history]]
 - [[changes/2026-08-14-052224-research-history-dolphin-docker|Change - 단순화된 research history에 맞춰 Dolphin Docker 구성 정리]]
+- [[changes/2026-09-04-084921-dolphin-dsba-litellm-codex|Change - Dolphin 이미지에 DSBA LiteLLM Codex 프로필 추가]]
 
 ## daily
 
@@ -32,6 +33,7 @@ Open this `history/` directory as an Obsidian vault. These links stay repo-relat
 - [[daily/2026-07-27|Daily Log - 2026-07-27]]
 - [[daily/2026-08-03|Daily Log - 2026-08-03]]
 - [[daily/2026-08-14|Daily Log - 2026-08-14]]
+- [[daily/2026-09-04|Daily Log - 2026-09-04]]
 
 ## decisions
 
