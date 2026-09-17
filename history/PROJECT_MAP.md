@@ -11,7 +11,7 @@ Open this `history/` directory as an Obsidian vault. These links stay repo-relat
 ## root
 
 - [[CONTEXT|Project Context]]
-- [[INDEX|History Index]]
+- [History Index](INDEX.md)
 - [[README|Project History]]
 
 ## changes

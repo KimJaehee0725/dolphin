@@ -55,7 +55,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpegthumbnailer \
     p7zip-full \
  && locale-gen en_US.UTF-8 \
- && apt-get purge -y 'libnvidia-*' 'nvidia-*' 'cuda-drivers*' || true \
+ && (apt-get purge -y 'libnvidia-*' 'nvidia-*' 'cuda-drivers*' || true) \
  && apt-get autoremove -y \
  && rm -rf /var/lib/apt/lists/*
 
@@ -241,9 +241,37 @@ EOF
 
 RUN cat > "${HOME}/.zshrc" <<'EOF'
 [ -f "$HOME/.config/terminal-env.sh" ] && source "$HOME/.config/terminal-env.sh"
-if [[ -f "$HOME/.config/dsba-litellm.key" ]]; then
-  export DSBA_LITELLM_API_KEY="$(< "$HOME/.config/dsba-litellm.key")"
-fi
+
+function load_dolphin_auth() {
+  local auth_dir="$HOME/.config/dolphin-auth"
+  if [[ -r "$auth_dir/github.token" ]]; then
+    export GITHUB_TOKEN="$(< "$auth_dir/github.token")"
+  else
+    unset GITHUB_TOKEN
+  fi
+  if [[ -r "$auth_dir/huggingface.token" ]]; then
+    export HF_TOKEN="$(< "$auth_dir/huggingface.token")"
+  else
+    unset HF_TOKEN
+  fi
+  if [[ -r "$auth_dir/wandb.key" ]]; then
+    export WANDB_API_KEY="$(< "$auth_dir/wandb.key")"
+  else
+    unset WANDB_API_KEY
+  fi
+  if [[ -r "$auth_dir/dsba-litellm.key" ]]; then
+    export DSBA_LITELLM_API_KEY="$(< "$auth_dir/dsba-litellm.key")"
+  else
+    unset DSBA_LITELLM_API_KEY
+  fi
+}
+
+# The launcher can update credential files after the PID 1 shell starts. Load
+# them before every prompt and command so the first attached command sees them.
+autoload -Uz add-zsh-hook
+add-zsh-hook precmd load_dolphin_auth
+add-zsh-hook preexec load_dolphin_auth
+load_dolphin_auth
 
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
@@ -290,6 +318,10 @@ function y() {
 
 [[ -f "$HOME/.p10k.zsh" ]] && source "$HOME/.p10k.zsh"
 EOF
+
+# This repository is the source of truth for the prompt configuration. It is
+# copied on every build, so the same prompt is available on every server.
+COPY --chown=${UID}:${GID} p10k.zsh ${HOME}/.p10k.zsh
 
 # codex-plugin-cc
 # The plugin itself is prepared here, but Claude-side activation still happens inside Claude Code.

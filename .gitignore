@@ -1,8 +1,8 @@
 .DS_Store
 
-# Local runtime secrets. Commit config/runtime.env.example instead.
-config/runtime*.env
-!config/runtime.env.example
-config/.tokens
-config/github/token
-config/huggingface/token
+# Local runtime secrets. Commit runtime.env.example instead.
+/runtime*.env
+!/runtime.env.example
+
+# Ignore only the old runtime location long enough for automatic migration.
+/config/runtime*.env

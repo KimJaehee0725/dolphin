@@ -20,4 +20,4 @@ For human browsing, open the repository's `history/` directory as an Obsidian va
 and start at `PROJECT_MAP.md`. Rebuild portable wikilinks with `obsidian-map` or
 `index`; keep `.obsidian/` untracked.
 
-`config/runtime.env` is local-only. Never read, print, copy, or commit it.
+`runtime.env` is local-only. Never read, print, copy, or commit it.

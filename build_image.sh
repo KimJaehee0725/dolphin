@@ -2,14 +2,15 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-RUNTIME_CONFIG_FILE="${SCRIPT_DIR}/config/runtime.env"
+RUNTIME_CONFIG_FILE="${SCRIPT_DIR}/runtime.env"
+LEGACY_RUNTIME_CONFIG_FILE="${SCRIPT_DIR}/config/runtime.env"
 NO_CACHE=0
 
 usage() {
   cat <<'EOF'
 Usage: build_image.sh [--no-cache]
 
-Build the Dolphin image configured by config/runtime.env.
+Build the Dolphin image configured by runtime.env.
 EOF
 }
 
@@ -21,6 +22,11 @@ while (($#)); do
   esac
   shift
 done
+
+if [[ ! -f "${RUNTIME_CONFIG_FILE}" && -f "${LEGACY_RUNTIME_CONFIG_FILE}" ]]; then
+  mv "${LEGACY_RUNTIME_CONFIG_FILE}" "${RUNTIME_CONFIG_FILE}"
+  echo "Moved legacy config/runtime.env to runtime.env." >&2
+fi
 
 if [[ ! -f "${RUNTIME_CONFIG_FILE}" ]]; then
   echo "Error: missing runtime config file: ${RUNTIME_CONFIG_FILE}" >&2

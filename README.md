@@ -13,23 +13,35 @@ Docker-based development environment for research and coding agents.
 Use one local-only runtime file:
 
 ```bash
-cp config/runtime.env.example config/runtime.env
-vim config/runtime.env
-chmod 600 config/runtime.env
+cp runtime.env.example runtime.env
+vim runtime.env
+chmod 600 runtime.env
 ```
 
-`config/runtime.env` may contain tokens and is ignored by git. Add the issued
-DSBA key as `DSBA_LITELLM_API_KEY=...`; the launcher stores it in a private
-container-local file sourced by `.zshrc`, so it remains available in later zsh
-sessions. Build and start from the repo root:
+`runtime.env` may contain tokens and is ignored by Git and the Docker build
+context. The launcher stores non-empty tool credentials in mode `600`
+container-local files. The attached zsh loads them before each command, so a
+new or updated credential is available without restarting the container. Build
+and start from the repo root:
 
 ```bash
 bash build_image.sh
 bash make_container.sh
 ```
 
-The image installs a shared `dsba_litellm` provider without changing the default
-OpenAI provider. Use it through the dedicated profile:
+Only machine-specific values belong in `runtime.env`: image name, container
+name, mounts, ports, optional Docker socket access, and tokens. The scripts
+automatically move an existing legacy `config/runtime.env` to this new location
+without reading or printing its content.
+
+## LLM endpoint
+
+The ordinary `codex` command keeps the default OpenAI provider. It has no custom
+endpoint in this repository.
+
+The image also includes a separate `dsba` profile. It uses the fixed LiteLLM
+endpoint `https://dsba-server.duckdns.org:8022/llm/v1`, the runtime-only
+`DSBA_LITELLM_API_KEY`, and model `gpt-5.6-sol`:
 
 ```bash
 codex --profile dsba
@@ -38,9 +50,15 @@ codex --profile dsba
 Use `bash build_image.sh --no-cache` for a clean rebuild and
 `bash make_container.sh --recreate --no-attach` after changing image or mount
 settings. The runtime file only carries machine-specific names, mounts, ports,
-an optional Docker-socket switch, and optional session credentials.
+an optional Docker-socket switch, and optional runtime credentials.
 
-See [config/README.md](config/README.md) for the full runtime configuration notes.
+The container's PID 1 is an interactive login zsh shell. Both the launcher and
+`docker attach <container name>` open that shell. Use `Ctrl-p Ctrl-q` to detach
+without stopping it. The shared prompt configuration lives in
+`p10k.zsh`. Run `p10k configure` in the container, then run
+`bash sync_p10k_config.sh export` and commit `p10k.zsh` to use the same prompt
+on every server. Run `bash sync_p10k_config.sh import` to apply it to an already
+running container.
 
 ## Research History
 

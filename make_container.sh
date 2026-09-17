@@ -2,7 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-RUNTIME_CONFIG_FILE="${SCRIPT_DIR}/config/runtime.env"
+RUNTIME_CONFIG_FILE="${SCRIPT_DIR}/runtime.env"
+LEGACY_RUNTIME_CONFIG_FILE="${SCRIPT_DIR}/config/runtime.env"
 RECREATE=0
 ATTACH=1
 
@@ -25,6 +26,11 @@ while (($#)); do
   esac
   shift
 done
+
+if [[ ! -f "${RUNTIME_CONFIG_FILE}" && -f "${LEGACY_RUNTIME_CONFIG_FILE}" ]]; then
+  mv "${LEGACY_RUNTIME_CONFIG_FILE}" "${RUNTIME_CONFIG_FILE}"
+  echo "Moved legacy config/runtime.env to runtime.env." >&2
+fi
 
 if [[ ! -f "${RUNTIME_CONFIG_FILE}" ]]; then
   echo "Error: missing runtime config file: ${RUNTIME_CONFIG_FILE}" >&2
@@ -112,7 +118,9 @@ if ((RECREATE)) && container_exists; then
 fi
 
 if ! container_exists; then
-  docker run "${CREATE_ARGS[@]}" "${IMAGE_NAME}" sleep infinity >/dev/null
+  # Keep one interactive login shell as PID 1 so `docker attach` opens a
+  # usable shell instead of attaching to `sleep infinity`.
+  docker run "${CREATE_ARGS[@]}" -i -t "${IMAGE_NAME}" zsh -il >/dev/null
 else
   echo "Reusing existing container: ${CONTAINER_NAME}" >&2
   echo "Use --recreate after changing volumes, ports, or the image." >&2
@@ -122,15 +130,41 @@ if [[ "$(docker inspect -f '{{.State.Running}}' "${CONTAINER_NAME}")" != "true" 
   docker start "${CONTAINER_NAME}" >/dev/null
 fi
 
+CONTAINER_COMMAND="$(docker inspect -f '{{range .Config.Cmd}}{{printf "%s " .}}{{end}}' "${CONTAINER_NAME}")"
+if [[ "${CONTAINER_COMMAND}" != "zsh -il " ]]; then
+  echo "Error: ${CONTAINER_NAME} uses the old non-interactive container command." >&2
+  echo "Recreate it to enable docker attach: bash make_container.sh --recreate" >&2
+  exit 1
+fi
+
 if ! docker exec "${CONTAINER_NAME}" test -d "${WORKSPACE_DIR}"; then
   echo "Error: WORKSPACE_DIR does not exist in ${CONTAINER_NAME}: ${WORKSPACE_DIR}" >&2
   echo "Recreate it with: bash make_container.sh --recreate" >&2
   exit 1
 fi
 
-if [[ -n "${DSBA_LITELLM_API_KEY_VALUE}" ]]; then
-  printf '%s' "${DSBA_LITELLM_API_KEY_VALUE}" | docker exec -i "${CONTAINER_NAME}" \
-    sh -c 'umask 077; mkdir -p "$HOME/.config"; cat > "$HOME/.config/dsba-litellm.key"'
+sync_container_secret() {
+  local value="$1"
+  local filename="$2"
+
+  if [[ -n "${value}" ]]; then
+    printf '%s' "${value}" | docker exec -i "${CONTAINER_NAME}" \
+      sh -c 'umask 077; mkdir -p "$HOME/.config/dolphin-auth"; chmod 700 "$HOME/.config/dolphin-auth"; cat > "$HOME/.config/dolphin-auth/$1"' \
+      sh "${filename}"
+  else
+    docker exec "${CONTAINER_NAME}" \
+      sh -c 'rm -f "$HOME/.config/dolphin-auth/$1"' sh "${filename}"
+  fi
+}
+
+sync_container_secret "${GITHUB_TOKEN_VALUE}" github.token
+sync_container_secret "${HF_TOKEN_VALUE}" huggingface.token
+sync_container_secret "${WANDB_API_KEY_VALUE}" wandb.key
+sync_container_secret "${DSBA_LITELLM_API_KEY_VALUE}" dsba-litellm.key
+
+if [[ -n "${GITHUB_TOKEN_VALUE}" ]]; then
+  docker exec "${CONTAINER_NAME}" zsh -fc \
+    'export GITHUB_TOKEN="$(< "$HOME/.config/dolphin-auth/github.token")"; gh auth setup-git >/dev/null 2>&1 || true'
 fi
 
 if ((!ATTACH)); then
@@ -138,18 +172,5 @@ if ((!ATTACH)); then
   exit 0
 fi
 
-SESSION_ARGS=(
-  -e "TERM=${TERM:-xterm-256color}"
-  -e "COLORTERM=${COLORTERM:-truecolor}"
-  -e "TERM_PROGRAM=${TERM_PROGRAM:-}"
-)
-[[ -n "${GITHUB_TOKEN_VALUE}" ]] && SESSION_ARGS+=(-e "GITHUB_TOKEN=${GITHUB_TOKEN_VALUE}")
-[[ -n "${HF_TOKEN_VALUE}" ]] && SESSION_ARGS+=(-e "HF_TOKEN=${HF_TOKEN_VALUE}")
-[[ -n "${WANDB_API_KEY_VALUE}" ]] && SESSION_ARGS+=(-e "WANDB_API_KEY=${WANDB_API_KEY_VALUE}")
-[[ -n "${DSBA_LITELLM_API_KEY_VALUE}" ]] && SESSION_ARGS+=(-e "DSBA_LITELLM_API_KEY=${DSBA_LITELLM_API_KEY_VALUE}")
-
-docker exec -it \
-  "${SESSION_ARGS[@]}" \
-  -w "${WORKSPACE_DIR}" \
-  "${CONTAINER_NAME}" \
-  zsh -lc 'if [[ -n "${GITHUB_TOKEN:-}" ]]; then gh auth setup-git >/dev/null 2>&1 || true; fi; exec zsh -l'
+echo "Attach with Ctrl-p Ctrl-q to leave the shell running." >&2
+docker attach --detach-keys='ctrl-p,ctrl-q' "${CONTAINER_NAME}"
