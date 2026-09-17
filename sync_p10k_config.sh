@@ -71,6 +71,6 @@ case "${DIRECTION}" in
     docker cp "${P10K_CONFIG_FILE}" "${CONTAINER_NAME}:${CONTAINER_HOME}/.p10k.zsh"
     docker exec "${CONTAINER_NAME}" chown "${CONTAINER_UID}:${CONTAINER_GID}" "${CONTAINER_HOME}/.p10k.zsh"
     echo "Imported p10k configuration into ${CONTAINER_NAME}."
-    echo "Detach and attach again to load it in the main shell."
+    echo "Run this in the attached shell to load it now: source ~/.p10k.zsh"
     ;;
 esac
