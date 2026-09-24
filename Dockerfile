@@ -130,6 +130,24 @@ RUN mkdir -p "${NPM_CONFIG_PREFIX}" \
 RUN curl -fsSL https://claude.ai/install.sh | bash \
  && claude --version
 
+# Keep the source tree because the Claude and Codex skills use relative paths
+# to shared references and scripts. Pin the revision for reproducible builds.
+ARG IM_NOT_AI_REPOSITORY=https://github.com/epoko77-ai/im-not-ai.git
+ARG IM_NOT_AI_REF=92b2936956d65d62ff4b19b75cccad8e3429bf43
+RUN install -d -m 0755 "${HOME}/.local/share" \
+ && git init -q "${HOME}/.local/share/im-not-ai" \
+ && git -C "${HOME}/.local/share/im-not-ai" remote add origin \
+      "${IM_NOT_AI_REPOSITORY}" \
+ && git -C "${HOME}/.local/share/im-not-ai" fetch -q --depth 1 origin \
+      "${IM_NOT_AI_REF}" \
+ && git -C "${HOME}/.local/share/im-not-ai" checkout -q --detach FETCH_HEAD \
+ && test "$(git -C "${HOME}/.local/share/im-not-ai" rev-parse HEAD)" = "${IM_NOT_AI_REF}" \
+ && bash "${HOME}/.local/share/im-not-ai/install.sh" --no-gemini \
+ && test -f "${HOME}/.codex/skills/humanize-korean/SKILL.md" \
+ && test -f "${HOME}/.codex/skills/humanize-korean/references/quick-rules.md" \
+ && test -f "${HOME}/.claude/skills/humanize-korean/SKILL.md" \
+ && test -f "${HOME}/.local/share/im-not-ai/scripts/prepare_monolith_input.py"
+
 RUN EZA_URL="$(curl -fsSL https://api.github.com/repos/eza-community/eza/releases/latest | jq -r '.assets[] | select(.name | test("x86_64-unknown-linux-gnu.tar.gz$")) | .browser_download_url' | head -n1)" \
  && curl -fsSL "${EZA_URL}" -o /tmp/eza.tar.gz \
  && tar -xzf /tmp/eza.tar.gz -C /tmp \

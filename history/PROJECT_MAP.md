@@ -11,7 +11,7 @@ Open this `history/` directory as an Obsidian vault. These links stay repo-relat
 ## root
 
 - [[CONTEXT|Project Context]]
-- [History Index](INDEX.md)
+- [[INDEX|History Index]]
 - [[README|Project History]]
 
 ## changes
@@ -25,6 +25,11 @@ Open this `history/` directory as an Obsidian vault. These links stay repo-relat
 - [[changes/2026-08-03-052448-replace-central-memory-with-local-bm25s-history|Change - Replace central memory with local BM25S history]]
 - [[changes/2026-08-14-052224-research-history-dolphin-docker|Change - 단순화된 research history에 맞춰 Dolphin Docker 구성 정리]]
 - [[changes/2026-09-04-084921-dolphin-dsba-litellm-codex|Change - Dolphin 이미지에 DSBA LiteLLM Codex 프로필 추가]]
+- [[changes/2026-09-17-153132-dolphin-attach-shell-and-shared-p10k-configuration|Change - Dolphin attach shell and shared p10k configuration]]
+- [[changes/2026-09-17-153621-dolphin-root-configuration-layout-and-endpoint-clarification|Change - Dolphin root configuration layout and endpoint clarification]]
+- [[changes/2026-09-17-154924-docker-secret-context-and-attached-shell-credential-repair|Change - Docker secret context and attached-shell credential repair]]
+- [[changes/2026-09-17-162138-clarify-live-p10k-import-step|Change - Clarify live p10k import step]]
+- [[changes/2026-09-24-153307-dolphin-im-not-ai|Change - Dolphin 이미지에 im-not-ai 스킬 추가]]
 
 ## daily
 
@@ -34,7 +39,13 @@ Open this `history/` directory as an Obsidian vault. These links stay repo-relat
 - [[daily/2026-08-03|Daily Log - 2026-08-03]]
 - [[daily/2026-08-14|Daily Log - 2026-08-14]]
 - [[daily/2026-09-04|Daily Log - 2026-09-04]]
+- [[daily/2026-09-17|Daily Log - 2026-09-17]]
+- [[daily/2026-09-24|Daily Log - 2026-09-24]]
 
 ## decisions
 
 - [[decisions/0001-use-repository-local-bm25s-research-history|Decision 0001 - Use repository-local BM25S research history]]
+
+## experiments
+
+- [[experiments/0001-validate-dolphin-image-and-attached-shell-on-nvidia-server|Experiment 0001 - Validate Dolphin image and attached shell on NVIDIA server]]

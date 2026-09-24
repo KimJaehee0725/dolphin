@@ -1,6 +1,6 @@
 # Project Context
 
-Last updated: 2026-08-14
+Last updated: 2026-09-24
 
 ## Research Goal
 
@@ -11,6 +11,7 @@ Last updated: 2026-08-14
 - Ubuntu 22.04/CUDA 12.2 image에 Python 3.12, NumPy, Codex, Claude, terminal 도구를 설치한다.
 - Tree-sitter CLI는 glibc 2.35 호환 버전 `0.25.10`으로 pin한다.
 - image build 시 검증된 `track-research-history` commit을 `~/.codex/skills/track-research-history`에 설치하고 `REVISION`에 기록한다.
+- image build 시 고정된 `im-not-ai` commit을 `~/.local/share/im-not-ai`에 보관하고 Claude Code 및 Codex CLI에 한국어 윤문 스킬을 연결한다.
 - 각 프로젝트의 Git-tracked `history/*.md`가 유일한 durable memory이며, vendored BM25S가 현재 Markdown을 in-memory 검색한다.
 - `history/PROJECT_MAP.md`의 상대 wikilink를 Obsidian viewer/backlink/graph 진입점으로 사용한다.
 - `jaehee-dev`는 `sleep infinity`로 유지하고, login shell과 선택적 인증 env는 `docker exec` 세션에만 전달한다.

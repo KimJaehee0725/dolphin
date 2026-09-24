@@ -7,6 +7,7 @@ Docker-based development environment for research and coding agents.
 - CUDA 12.2 Ubuntu base image with Node.js, Python 3.12 via `uv`, GitHub CLI, Docker CLI, tmux, zsh, and common terminal tools.
 - OpenAI Codex CLI and Claude Code.
 - The pinned repository-local `track-research-history` skill with vendored BM25S recall and Obsidian project maps.
+- The pinned `im-not-ai` Korean writing skill for Claude Code and Codex CLI.
 
 ## Runtime Config
 
@@ -76,3 +77,13 @@ python3 ~/.codex/skills/track-research-history/scripts/history.py finish
 
 Open a project's `history/` folder directly in Obsidian and use
 `PROJECT_MAP.md` for portable links, backlinks, and graph navigation.
+
+## Korean Writing Skill
+
+The image installs `im-not-ai` from a pinned commit under
+`~/.local/share/im-not-ai`. It links the Claude Code skills under
+`~/.claude/skills/` and the Codex skill under
+`~/.codex/skills/humanize-korean`. Start a new agent session to load the skill.
+Use `$humanize-korean` in Codex or `/humanize-korean` in Claude Code.
+The `IM_NOT_AI_REF` Docker build argument selects a different revision when
+an update is needed.
