@@ -1,6 +1,6 @@
 # History Index
 
-Generated: 2026-09-24 15:34 +0900
+Generated: 2026-09-30 21:32 +0900
 
 ## Current Context
 
@@ -11,6 +11,7 @@ Generated: 2026-09-24 15:34 +0900
 
 ### daily
 
+- `history/daily/2026-09-30.md` - Daily Log - 2026-09-30
 - `history/daily/2026-09-24.md` - Daily Log - 2026-09-24
 - `history/daily/2026-09-17.md` - Daily Log - 2026-09-17
 - `history/daily/2026-09-04.md` - Daily Log - 2026-09-04
@@ -22,6 +23,7 @@ Generated: 2026-09-24 15:34 +0900
 
 ### changes
 
+- `history/changes/2026-09-30-213234-dolphin-research-slides.md` - Change - Dolphin 이미지에 research-slides 스킬 추가
 - `history/changes/2026-09-24-153307-dolphin-im-not-ai.md` - Change - Dolphin 이미지에 im-not-ai 스킬 추가
 - `history/changes/2026-09-17-162138-clarify-live-p10k-import-step.md` - Change - Clarify live p10k import step
 - `history/changes/2026-09-17-154924-docker-secret-context-and-attached-shell-credential-repair.md` - Change - Docker secret context and attached-shell credential repair
@@ -33,7 +35,6 @@ Generated: 2026-09-24 15:34 +0900
 - `history/changes/2026-07-27-132641-dolphin-research-memory.md` - Change - Dolphin 비밀번호 기반 전체 프로젝트 Research Memory 연결
 - `history/changes/2026-07-25-160945-dolphin-research-memory.md` - Change - Dolphin 이미지에 전역 Research Memory 에이전트 지침 포함
 - `history/changes/2026-07-25-160832-research-memory.md` - Change - Research Memory 자동 조회와 작업 종료 기록 의무 명시
-- `history/changes/2026-07-25-143723-dolphin-research-memory.md` - Change - Dolphin 에이전트의 Research Memory 동의 기반 설정 추가
 
 ### decisions
 

@@ -8,6 +8,7 @@ Docker-based development environment for research and coding agents.
 - OpenAI Codex CLI and Claude Code.
 - The pinned repository-local `track-research-history` skill with vendored BM25S recall and Obsidian project maps.
 - The pinned `im-not-ai` Korean writing skill for Claude Code and Codex CLI.
+- The pinned `research-slides` skill for Claude Code and Codex CLI, with PowerPoint templates, Python dependencies, LibreOffice, and NanumSquare fonts.
 
 ## Runtime Config
 
@@ -87,3 +88,25 @@ The image installs `im-not-ai` from a pinned commit under
 Use `$humanize-korean` in Codex or `/humanize-korean` in Claude Code.
 The `IM_NOT_AI_REF` Docker build argument selects a different revision when
 an update is needed.
+
+## Research Slides Skill
+
+The image installs `KimJaehee0725/research-slides` from a pinned commit under
+`~/.local/share/research-slides` and links it into both
+`~/.codex/skills/research-slides` and `~/.claude/skills/research-slides`.
+Start a new agent session and use `$research-slides` in Codex or
+`/research-slides` in Claude Code.
+
+The image includes the upstream Python requirements, LibreOffice Impress,
+poppler, pandoc, and NanumSquare fonts. Fontconfig maps the template's
+`NanumSquareOTF` font names to the Linux fonts for rendering.
+
+```bash
+python ~/.codex/skills/research-slides/scripts/build_deck.py \
+  ~/.codex/skills/research-slides/examples/pysr_example.json /tmp/research-slides.pptx
+python ~/.codex/skills/research-slides/scripts/render_check.py \
+  /tmp/research-slides.pptx --out /tmp/research-slides-render
+```
+
+The `RESEARCH_SLIDES_REF` Docker build argument selects another revision.
+Rebuild the image and recreate the container to apply this addition.

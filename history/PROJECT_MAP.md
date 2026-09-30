@@ -30,6 +30,7 @@ Open this `history/` directory as an Obsidian vault. These links stay repo-relat
 - [[changes/2026-09-17-154924-docker-secret-context-and-attached-shell-credential-repair|Change - Docker secret context and attached-shell credential repair]]
 - [[changes/2026-09-17-162138-clarify-live-p10k-import-step|Change - Clarify live p10k import step]]
 - [[changes/2026-09-24-153307-dolphin-im-not-ai|Change - Dolphin 이미지에 im-not-ai 스킬 추가]]
+- [[changes/2026-09-30-213234-dolphin-research-slides|Change - Dolphin 이미지에 research-slides 스킬 추가]]
 
 ## daily
 
@@ -41,6 +42,7 @@ Open this `history/` directory as an Obsidian vault. These links stay repo-relat
 - [[daily/2026-09-04|Daily Log - 2026-09-04]]
 - [[daily/2026-09-17|Daily Log - 2026-09-17]]
 - [[daily/2026-09-24|Daily Log - 2026-09-24]]
+- [[daily/2026-09-30|Daily Log - 2026-09-30]]
 
 ## decisions
 

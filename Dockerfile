@@ -47,6 +47,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ncurses-bin \
     ncurses-term \
     poppler-utils \
+    libreoffice-impress \
+    fontconfig \
+    fonts-nanum \
+    fonts-nanum-extra \
     pandoc \
     graphviz \
     parallel \
@@ -147,6 +151,51 @@ RUN install -d -m 0755 "${HOME}/.local/share" \
  && test -f "${HOME}/.codex/skills/humanize-korean/references/quick-rules.md" \
  && test -f "${HOME}/.claude/skills/humanize-korean/SKILL.md" \
  && test -f "${HOME}/.local/share/im-not-ai/scripts/prepare_monolith_input.py"
+
+# Share the complete slide skill tree between Codex and Claude so templates,
+# references, and scripts resolve from either skill directory.
+ARG RESEARCH_SLIDES_REPOSITORY=https://github.com/KimJaehee0725/research-slides.git
+ARG RESEARCH_SLIDES_REF=55dce44c56913e4a775237a63dc9e8466d5a377d
+RUN git init -q "${HOME}/.local/share/research-slides" \
+ && git -C "${HOME}/.local/share/research-slides" remote add origin \
+      "${RESEARCH_SLIDES_REPOSITORY}" \
+ && git -C "${HOME}/.local/share/research-slides" fetch -q --depth 1 origin \
+      "${RESEARCH_SLIDES_REF}" \
+ && git -C "${HOME}/.local/share/research-slides" checkout -q --detach FETCH_HEAD \
+ && test "$(git -C "${HOME}/.local/share/research-slides" rev-parse HEAD)" = "${RESEARCH_SLIDES_REF}" \
+ && uv pip install --python "${HOME}/.venv/bin/python" \
+      -r "${HOME}/.local/share/research-slides/requirements.txt" \
+ && install -d -m 0755 "${HOME}/.codex/skills" "${HOME}/.claude/skills" \
+ && ln -s "${HOME}/.local/share/research-slides" "${HOME}/.codex/skills/research-slides" \
+ && ln -s "${HOME}/.local/share/research-slides" "${HOME}/.claude/skills/research-slides" \
+ && test -f "${HOME}/.codex/skills/research-slides/SKILL.md" \
+ && test -f "${HOME}/.claude/skills/research-slides/assets/research-slides-template.pptx" \
+ && python "${HOME}/.codex/skills/research-slides/scripts/build_deck.py" --help >/dev/null \
+ && python "${HOME}/.claude/skills/research-slides/scripts/render_check.py" --help >/dev/null \
+ && soffice --version \
+ && pdftoppm -v \
+ && pandoc --version
+
+# Match the template's macOS font names to the installed Linux NanumSquare font.
+RUN install -d -m 0755 "${HOME}/.config/fontconfig/conf.d" \
+ && cat > "${HOME}/.config/fontconfig/conf.d/99-research-slides.conf" <<'EOF'
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <match target="pattern">
+    <test name="family"><string>NanumSquareOTF ExtraBold</string></test>
+    <edit name="family" mode="assign" binding="strong"><string>NanumSquare</string></edit>
+    <edit name="weight" mode="assign" binding="strong"><const>extrabold</const></edit>
+  </match>
+  <match target="pattern">
+    <test name="family"><string>NanumSquareOTF</string></test>
+    <edit name="family" mode="assign" binding="strong"><string>NanumSquare</string></edit>
+  </match>
+</fontconfig>
+EOF
+RUN fc-cache -f \
+ && fc-match -f '%{family}\n' 'NanumSquareOTF' | grep -q NanumSquare \
+ && fc-match -f '%{family}\n' 'NanumSquareOTF ExtraBold' | grep -q NanumSquare
 
 RUN EZA_URL="$(curl -fsSL https://api.github.com/repos/eza-community/eza/releases/latest | jq -r '.assets[] | select(.name | test("x86_64-unknown-linux-gnu.tar.gz$")) | .browser_download_url' | head -n1)" \
  && curl -fsSL "${EZA_URL}" -o /tmp/eza.tar.gz \
