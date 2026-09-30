@@ -6,6 +6,7 @@ status: completed
 tags: [history, change]
 agent: codex
 record_id: chg-2026-09-30-213234-dolphin-research-slides
+commits: 184f4b03425c
 ---
 # Change - Dolphin 이미지에 research-slides 스킬 추가
 
@@ -13,6 +14,7 @@ Date: 2026-09-30 21:32 +0900
 Agent: codex
 Status: completed
 Record Id: chg-2026-09-30-213234-dolphin-research-slides
+Commits: 184f4b03425c
 
 ## Why
 
@@ -47,4 +49,5 @@ M Dockerfile
 
 ## Commits
 
--
+- `184f4b03425c` 2026-09-30 21:33 - Install pinned research-slides skill in Dolphin image
+
