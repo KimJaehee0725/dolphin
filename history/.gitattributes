@@ -1,0 +1,4 @@
+# Generated or append-only notes: merges keep both sides; run `history.py index` afterwards.
+INDEX.md merge=union
+PROJECT_MAP.md merge=union
+daily/*.md merge=union

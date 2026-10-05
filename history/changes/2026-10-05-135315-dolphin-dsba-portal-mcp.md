@@ -6,6 +6,7 @@ status: completed
 tags: [history, change]
 agent: codex
 record_id: chg-2026-10-05-135315-dolphin-dsba-portal-mcp
+commits: df3cd1c4714e
 ---
 # Change - Dolphin에 DSBA Portal MCP 연결 추가
 
@@ -13,6 +14,7 @@ Date: 2026-10-05 13:53 +0900
 Agent: codex
 Status: completed
 Record Id: chg-2026-10-05-135315-dolphin-dsba-portal-mcp
+Commits: df3cd1c4714e
 
 ## Why
 
@@ -53,4 +55,5 @@ M Dockerfile
 
 ## Commits
 
--
+- `df3cd1c4714e` 2026-10-05 13:53 - Add DSBA Portal MCP with runtime token loading
+
