@@ -32,6 +32,7 @@ Open this `history/` directory as an Obsidian vault. These links stay repo-relat
 - [[changes/2026-09-24-153307-dolphin-im-not-ai|Change - Dolphin 이미지에 im-not-ai 스킬 추가]]
 - [[changes/2026-09-30-213234-dolphin-research-slides|Change - Dolphin 이미지에 research-slides 스킬 추가]]
 - [[changes/2026-10-05-135315-dolphin-dsba-portal-mcp|Change - Dolphin에 DSBA Portal MCP 연결 추가]]
+- [[changes/2026-10-05-135853-mac-dsba-portal-mcp-runtime|Change - Mac에 DSBA Portal MCP 연결과 runtime 예시 설명 추가]]
 
 ## daily
 
