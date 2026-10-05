@@ -245,7 +245,31 @@ name = "DSBA LiteLLM"
 base_url = "https://dsba-server.duckdns.org:8022/llm/v1"
 env_key = "DSBA_LITELLM_API_KEY"
 wire_api = "responses"
+
+[mcp_servers.dsba_portal]
+command = "dolphin-dsba-portal-mcp"
+env_vars = ["DSBA_PORTAL_TOKEN"]
+startup_timeout_sec = 120
 EOF
+
+# Read runtime credentials when MCP starts, including from non-interactive
+# agent sessions. uvx caches the pinned package after its first runtime launch.
+RUN cat > "${HOME}/.local/bin/dolphin-dsba-portal-mcp" <<'EOF'
+#!/bin/sh
+set -eu
+token_file="$HOME/.config/dolphin-auth/dsba-portal.token"
+if [ -r "$token_file" ]; then
+  DSBA_PORTAL_TOKEN="$(cat "$token_file")"
+  export DSBA_PORTAL_TOKEN
+fi
+if [ -z "${DSBA_PORTAL_TOKEN:-}" ]; then
+  echo "Set DSBA_PORTAL_TOKEN in runtime.env and rerun make_container.sh before starting DSBA Portal MCP." >&2
+  exit 1
+fi
+exec uvx --from git+https://github.com/DSBA-Lab/server-portal-mcp@eadbab403ca2e79a77bb0d45768ce20490e2f081 dsba-portal-mcp "$@"
+EOF
+RUN chmod 0755 "${HOME}/.local/bin/dolphin-dsba-portal-mcp" \
+ && claude mcp add --scope user dsba-portal -- dolphin-dsba-portal-mcp
 
 RUN cat > "${HOME}/.codex/dsba.config.toml" <<'EOF'
 model = "gpt-5.6-sol"
@@ -330,6 +354,11 @@ function load_dolphin_auth() {
     export DSBA_LITELLM_API_KEY="$(< "$auth_dir/dsba-litellm.key")"
   else
     unset DSBA_LITELLM_API_KEY
+  fi
+  if [[ -r "$auth_dir/dsba-portal.token" ]]; then
+    export DSBA_PORTAL_TOKEN="$(< "$auth_dir/dsba-portal.token")"
+  else
+    unset DSBA_PORTAL_TOKEN
   fi
 }
 

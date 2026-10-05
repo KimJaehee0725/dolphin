@@ -54,6 +54,7 @@ GITHUB_TOKEN_VALUE="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
 HF_TOKEN_VALUE="${HF_TOKEN:-${HUGGINGFACE_TOKEN:-}}"
 WANDB_API_KEY_VALUE="${WANDB_API_KEY:-}"
 DSBA_LITELLM_API_KEY_VALUE="${DSBA_LITELLM_API_KEY:-}"
+DSBA_PORTAL_TOKEN_VALUE="${DSBA_PORTAL_TOKEN:-}"
 
 CREATE_ARGS=(
   -d
@@ -161,6 +162,7 @@ sync_container_secret "${GITHUB_TOKEN_VALUE}" github.token
 sync_container_secret "${HF_TOKEN_VALUE}" huggingface.token
 sync_container_secret "${WANDB_API_KEY_VALUE}" wandb.key
 sync_container_secret "${DSBA_LITELLM_API_KEY_VALUE}" dsba-litellm.key
+sync_container_secret "${DSBA_PORTAL_TOKEN_VALUE}" dsba-portal.token
 
 if [[ -n "${GITHUB_TOKEN_VALUE}" ]]; then
   docker exec "${CONTAINER_NAME}" zsh -fc \

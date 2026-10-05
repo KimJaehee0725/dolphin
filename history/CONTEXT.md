@@ -1,6 +1,6 @@
 # Project Context
 
-Last updated: 2026-09-30
+Last updated: 2026-10-05
 
 ## Research Goal
 
@@ -18,6 +18,7 @@ Last updated: 2026-09-30
 - `jaehee-dev`는 `sleep infinity`로 유지하고, login shell과 선택적 인증 env는 `docker exec` 세션에만 전달한다.
 - image는 `~/.codex/config.toml`에 DSBA LiteLLM common provider를, `~/.codex/dsba.config.toml`에 DSBA 전용 model profile을 제공한다.
 - `make_container.sh`는 local-only `runtime.env`의 `DSBA_LITELLM_API_KEY`를 container-local mode 600 key file에 저장하고 `.zshrc`가 로드하게 한다.
+- image는 Codex와 Claude에 DSBA Portal MCP를 등록한다. `make_container.sh`가 `DSBA_PORTAL_TOKEN`을 권한 600 파일로 전달하고 MCP 실행기가 토큰을 읽어 고정된 upstream commit을 `uvx`로 실행한다.
 
 ## Current Decisions
 

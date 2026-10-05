@@ -6,6 +6,7 @@ Docker-based development environment for research and coding agents.
 
 - CUDA 12.2 Ubuntu base image with Node.js, Python 3.12 via `uv`, GitHub CLI, Docker CLI, tmux, zsh, and common terminal tools.
 - OpenAI Codex CLI and Claude Code.
+- DSBA Portal MCP configuration for Codex CLI and Claude Code, with runtime token loading.
 - The pinned repository-local `track-research-history` skill with vendored BM25S recall and Obsidian project maps.
 - The pinned `im-not-ai` Korean writing skill for Claude Code and Codex CLI.
 - The pinned `research-slides` skill for Claude Code and Codex CLI, with PowerPoint templates, Python dependencies, LibreOffice, and NanumSquare fonts.
@@ -110,3 +111,50 @@ python ~/.codex/skills/research-slides/scripts/render_check.py \
 
 The `RESEARCH_SLIDES_REF` Docker build argument selects another revision.
 Rebuild the image and recreate the container to apply this addition.
+
+## DSBA Portal MCP
+
+The image registers `dsba_portal` in Codex and `dsba-portal` in Claude Code.
+Both launch `dolphin-dsba-portal-mcp`, which reads the runtime token and runs
+`server-portal-mcp` through `uvx` at pinned commit
+`eadbab403ca2e79a77bb0d45768ce20490e2f081`.
+The first launch downloads the package and its dependencies. It needs access
+to the GitHub repository; private repository access also needs GitHub authentication.
+
+Issue a token in the server portal's API token tab and set it in your local
+`runtime.env`:
+
+```bash
+DSBA_PORTAL_TOKEN=dsba_pat_...
+```
+
+Use a `read` token for queries or a `write` token for reservations, updates,
+and returns. Build the image and recreate the container for the initial setup:
+
+```bash
+bash build_image.sh
+bash make_container.sh --recreate --no-attach
+```
+
+For later token updates, rerun `bash make_container.sh --no-attach`, then start
+a new agent session. The launcher stores the token in
+`~/.config/dolphin-auth/dsba-portal.token` with mode `600` and removes the file
+when the runtime value is empty. The token is supplied at runtime; MCP
+configuration files contain no token value.
+
+The tools include `list_servers`, `check_gpu_availability`, `register_usage`,
+and `return_usage`. Example request:
+
+> 다음 주 월요일부터 3일간 3번 서버 빈 GPU 2개 예약해 줘.
+
+Check the connection in a new container agent session with `/mcp`.
+You can also query the REST API from the attached container shell:
+
+```bash
+curl --fail --silent --show-error \
+  -H "Authorization: Bearer ${DSBA_PORTAL_TOKEN}" \
+  https://dsba-server.duckdns.org:8022/api/v1/servers
+```
+
+The full REST API specification is at
+<https://dsba-server.duckdns.org:8022/api/v1/docs>.
