@@ -6,6 +6,7 @@ status: completed
 tags: [history, change]
 agent: codex
 record_id: chg-2026-10-05-135853-mac-dsba-portal-mcp-runtime
+commits: e75830224782
 ---
 # Change - Mac에 DSBA Portal MCP 연결과 runtime 예시 설명 추가
 
@@ -13,6 +14,7 @@ Date: 2026-10-05 13:58 +0900
 Agent: codex
 Status: completed
 Record Id: chg-2026-10-05-135853-mac-dsba-portal-mcp-runtime
+Commits: e75830224782
 
 ## Why
 
@@ -43,4 +45,5 @@ M runtime.env.example
 
 ## Commits
 
--
+- `e75830224782` 2026-10-05 13:59 - Document runtime settings and credential formats
+
