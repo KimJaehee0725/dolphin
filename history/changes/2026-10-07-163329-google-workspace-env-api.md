@@ -50,4 +50,3 @@ workspace-mcp==2.0.1을 설치하고 Codex와 Claude에 single-user stdio MCP를
 ## Commits
 
 - `f079d00f8364` 2026-10-07 16:34 - Switch Google integration to Workspace OAuth env credentials
-

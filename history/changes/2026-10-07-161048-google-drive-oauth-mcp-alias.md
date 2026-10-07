@@ -64,4 +64,3 @@ M .dockerignore
 ## Commits
 
 - `9a52fd981584` 2026-10-07 16:17 - Add Google Drive OAuth MCP aliases
-
