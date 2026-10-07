@@ -6,6 +6,7 @@ status: completed
 tags: [history, change]
 agent: codex
 record_id: chg-2026-10-07-161048-google-drive-oauth-mcp-alias
+commits: 9a52fd981584
 ---
 # Change - Google Drive OAuth MCP와 alias 연결 추가
 
@@ -13,6 +14,7 @@ Date: 2026-10-07 16:10 +0900
 Agent: codex
 Status: completed
 Record Id: chg-2026-10-07-161048-google-drive-oauth-mcp-alias
+Commits: 9a52fd981584
 
 ## Why
 
@@ -61,4 +63,5 @@ M .dockerignore
 
 ## Commits
 
--
+- `9a52fd981584` 2026-10-07 16:17 - Add Google Drive OAuth MCP aliases
+
