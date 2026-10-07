@@ -6,6 +6,7 @@ status: completed
 tags: [history, change]
 agent: codex
 record_id: chg-2026-10-07-163329-google-workspace-env-api
+commits: f079d00f8364
 ---
 # Change - Google Workspace env 인증과 다섯 API 연결로 변경
 
@@ -13,6 +14,7 @@ Date: 2026-10-07 16:33 +0900
 Agent: codex
 Status: completed
 Record Id: chg-2026-10-07-163329-google-workspace-env-api
+Commits: f079d00f8364
 
 ## Why
 
@@ -47,4 +49,5 @@ workspace-mcp==2.0.1을 설치하고 Codex와 Claude에 single-user stdio MCP를
 
 ## Commits
 
--
+- `f079d00f8364` 2026-10-07 16:34 - Switch Google integration to Workspace OAuth env credentials
+
