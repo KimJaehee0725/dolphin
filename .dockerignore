@@ -2,3 +2,6 @@
 !Dockerfile
 !AGENTS.md
 !p10k.zsh
+!scripts/
+!scripts/dolphin_gdrive_aliases.py
+!scripts/dolphin_google_drive_mcp.py

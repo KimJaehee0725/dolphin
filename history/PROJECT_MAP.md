@@ -33,6 +33,7 @@ Open this `history/` directory as an Obsidian vault. These links stay repo-relat
 - [[changes/2026-09-30-213234-dolphin-research-slides|Change - Dolphin 이미지에 research-slides 스킬 추가]]
 - [[changes/2026-10-05-135315-dolphin-dsba-portal-mcp|Change - Dolphin에 DSBA Portal MCP 연결 추가]]
 - [[changes/2026-10-05-135853-mac-dsba-portal-mcp-runtime|Change - Mac에 DSBA Portal MCP 연결과 runtime 예시 설명 추가]]
+- [[changes/2026-10-07-161048-google-drive-oauth-mcp-alias|Change - Google Drive OAuth MCP와 alias 연결 추가]]
 
 ## daily
 
@@ -46,6 +47,7 @@ Open this `history/` directory as an Obsidian vault. These links stay repo-relat
 - [[daily/2026-09-24|Daily Log - 2026-09-24]]
 - [[daily/2026-09-30|Daily Log - 2026-09-30]]
 - [[daily/2026-10-05|Daily Log - 2026-10-05]]
+- [[daily/2026-10-07|Daily Log - 2026-10-07]]
 
 ## decisions
 

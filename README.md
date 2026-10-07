@@ -33,9 +33,79 @@ bash make_container.sh
 ```
 
 Only machine-specific values belong in `runtime.env`: image name, container
-name, mounts, ports, optional Docker socket access, and tokens. The scripts
-automatically move an existing legacy `config/runtime.env` to this new location
-without reading or printing its content.
+name, mounts, ports, optional Docker socket access, runtime tokens, and Google
+Drive aliases. The scripts automatically move an existing legacy
+`config/runtime.env` to this new location without reading or printing its
+content.
+
+## Google Drive MCP
+
+The image registers a Google Drive MCP server for Codex CLI and Claude Code.
+It supports Drive files and folders, plus Google Docs, Sheets, and Slides
+operations. OAuth credentials stay outside the repository and the Docker build
+context.
+
+Create a Google Cloud project, enable the Drive, Docs, Sheets, and Slides APIs,
+add your account as an OAuth test user, then create an OAuth client with the
+Desktop app type. Run the local authorization helper with the downloaded client
+JSON file:
+
+```bash
+python3 scripts/google_drive_auth.py ~/Downloads/oauth-client.json
+```
+
+Run the helper on the machine that will run `make_container.sh`. For a remote
+host, open the SSH tunnel in one terminal, then run the helper on that host in
+a second terminal:
+
+```bash
+ssh -L 8765:localhost:8765 user@server
+python3 scripts/google_drive_auth.py --no-browser --port 8765 /path/to/oauth-client.json
+```
+
+The helper stores the OAuth client and tokens at
+`~/.config/dolphin-auth/google-drive.json` with mode `600`. The container
+launcher copies this file to the container's private auth directory with mode
+`600`. The file is removed from the container when the local file is absent.
+The helper never prints the client secret or tokens.
+
+The OAuth `drive` scope grants broad access to files available to that Google
+account. Aliases are names for the agent to use, not a Google permission limit.
+Agent instructions keep normal work on the aliases the user names. Calendar
+access is not requested.
+
+Add file or folder links to `runtime.env` with a stable uppercase alias:
+
+```bash
+GDRIVE_ALIAS_RESEARCH_FOLDER="https://drive.google.com/drive/folders/FOLDER_ID"
+GDRIVE_ALIAS_REPORT="https://docs.google.com/document/d/FILE_ID/edit"
+```
+
+The linked items must be accessible to the Google account used during OAuth.
+Alias names may contain uppercase letters, digits, and underscores. Run
+`bash make_container.sh --no-attach` after changing OAuth or alias settings.
+The launcher loads aliases into new and attached zsh commands without recreating
+the container.
+
+Use `dolphin-gdrive aliases` to view aliases, IDs, and item types, or
+`dolphin-gdrive resolve REPORT` to resolve one alias. These commands never show
+the original links. When an agent receives an alias, it resolves the Drive ID
+and uses the Google Drive MCP tools for listing, downloads, uploads, and edits.
+Folder aliases work as listing roots and upload destinations. File aliases can
+be downloaded or updated. To download a folder, list its files and download the
+requested items. Google-native documents can be exported and edited with the
+corresponding Docs, Sheets, or Slides tools.
+
+After updating the image, rebuild it and recreate the container to install the
+MCP server:
+
+```bash
+bash build_image.sh
+bash make_container.sh --recreate --no-attach
+```
+
+If the OAuth consent screen remains in Testing status, Google expires refresh
+tokens after seven days. Reauthorize with the helper when that happens.
 
 ## LLM endpoint
 

@@ -80,6 +80,8 @@ RUN ln -sf "$(command -v fdfind)" /usr/local/bin/fd \
  && ln -sf "$(command -v batcat)" /usr/local/bin/bat
 
 COPY --from=node_runtime /usr/local/ /usr/local/
+COPY scripts/dolphin_gdrive_aliases.py /tmp/dolphin-gdrive-aliases.py
+COPY scripts/dolphin_google_drive_mcp.py /tmp/dolphin-google-drive-mcp.py
 
 RUN groupadd -g "${GID}" "${USERNAME}" \
  && useradd -m -u "${UID}" -g "${GID}" -s /bin/zsh "${USERNAME}" \
@@ -128,8 +130,13 @@ RUN git init -q /tmp/track-research-history-source \
 
 RUN mkdir -p "${NPM_CONFIG_PREFIX}" \
  && npm config set prefix "${NPM_CONFIG_PREFIX}" \
- && npm install -g @openai/codex \
- && codex --version
+ && npm install -g @openai/codex @piotr-agier/google-drive-mcp@2.12.0 \
+ && codex --version \
+ && google-drive-mcp version
+
+RUN install -m 0755 /tmp/dolphin-gdrive-aliases.py "${HOME}/.local/bin/dolphin-gdrive" \
+ && install -m 0755 /tmp/dolphin-google-drive-mcp.py "${HOME}/.local/bin/dolphin-google-drive-mcp" \
+ && rm -f /tmp/dolphin-gdrive-aliases.py /tmp/dolphin-google-drive-mcp.py
 
 RUN curl -fsSL https://claude.ai/install.sh | bash \
  && claude --version
@@ -236,6 +243,7 @@ RUN git config --global init.defaultBranch main \
 # Global guidance points agents at the installed repo-local BM25S skill. No
 # passwords, SSH keys, or memory service configuration are copied into images.
 COPY --chown=${UID}:${GID} AGENTS.md /home/${USERNAME}/.codex/AGENTS.md
+COPY --chown=${UID}:${GID} AGENTS.md /home/${USERNAME}/.claude/CLAUDE.md
 
 # Keep the DSBA provider available without replacing Codex's default OpenAI
 # provider. The API key is supplied only at container runtime.
@@ -249,6 +257,10 @@ wire_api = "responses"
 [mcp_servers.dsba_portal]
 command = "dolphin-dsba-portal-mcp"
 env_vars = ["DSBA_PORTAL_TOKEN"]
+startup_timeout_sec = 120
+
+[mcp_servers.google_drive]
+command = "dolphin-google-drive-mcp"
 startup_timeout_sec = 120
 EOF
 
@@ -269,7 +281,8 @@ fi
 exec uvx --from git+https://github.com/DSBA-Lab/server-portal-mcp@eadbab403ca2e79a77bb0d45768ce20490e2f081 dsba-portal-mcp "$@"
 EOF
 RUN chmod 0755 "${HOME}/.local/bin/dolphin-dsba-portal-mcp" \
- && claude mcp add --scope user dsba-portal -- dolphin-dsba-portal-mcp
+ && claude mcp add --scope user dsba-portal -- dolphin-dsba-portal-mcp \
+ && claude mcp add --scope user google-drive -- dolphin-google-drive-mcp
 
 RUN cat > "${HOME}/.codex/dsba.config.toml" <<'EOF'
 model = "gpt-5.6-sol"
@@ -362,12 +375,28 @@ function load_dolphin_auth() {
   fi
 }
 
+function load_dolphin_gdrive_aliases() {
+  local alias_file="$HOME/.config/dolphin-env/gdrive-aliases.zsh"
+  local env_name
+
+  for env_name in ${(k)parameters}; do
+    case "$env_name" in
+      GDRIVE_ALIAS_*) unset "$env_name" ;;
+    esac
+  done
+
+  [[ -r "$alias_file" ]] && source "$alias_file"
+}
+
 # The launcher can update credential files after the PID 1 shell starts. Load
 # them before every prompt and command so the first attached command sees them.
 autoload -Uz add-zsh-hook
 add-zsh-hook precmd load_dolphin_auth
 add-zsh-hook preexec load_dolphin_auth
+add-zsh-hook precmd load_dolphin_gdrive_aliases
+add-zsh-hook preexec load_dolphin_gdrive_aliases
 load_dolphin_auth
+load_dolphin_gdrive_aliases
 
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"

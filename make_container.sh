@@ -48,6 +48,7 @@ WORKSPACE_DIR="${WORKSPACE_DIR:-/workspace}"
 VOLUMES="${VOLUMES:-}"
 PORTS="${PORTS:-}"
 MOUNT_DOCKER_SOCKET="${MOUNT_DOCKER_SOCKET:-0}"
+HOST_GDRIVE_AUTH_FILE="${HOME}/.config/dolphin-auth/google-drive.json"
 
 # Accept the old aliases without exposing two copies inside the container.
 GITHUB_TOKEN_VALUE="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
@@ -55,6 +56,31 @@ HF_TOKEN_VALUE="${HF_TOKEN:-${HUGGINGFACE_TOKEN:-}}"
 WANDB_API_KEY_VALUE="${WANDB_API_KEY:-}"
 DSBA_LITELLM_API_KEY_VALUE="${DSBA_LITELLM_API_KEY:-}"
 DSBA_PORTAL_TOKEN_VALUE="${DSBA_PORTAL_TOKEN:-}"
+
+validate_gdrive_aliases() {
+  local env_name alias_name value
+
+  for env_name in $(compgen -A variable GDRIVE_ALIAS_); do
+    alias_name="${env_name#GDRIVE_ALIAS_}"
+    value="${!env_name}"
+    [[ -n "${value}" ]] || continue
+
+    if [[ ! "${alias_name}" =~ ^[A-Z][A-Z0-9_]*$ ]]; then
+      echo "Error: invalid Google Drive alias name: ${env_name}" >&2
+      return 1
+    fi
+
+    case "${value}" in
+      https://drive.google.com/*|https://docs.google.com/*) ;;
+      *)
+        echo "Error: ${env_name} must contain a Google Drive or Docs HTTPS link." >&2
+        return 1
+        ;;
+    esac
+  done
+}
+
+validate_gdrive_aliases
 
 CREATE_ARGS=(
   -d
@@ -158,11 +184,39 @@ sync_container_secret() {
   fi
 }
 
+sync_container_secret_file() {
+  local source_file="$1"
+  local filename="$2"
+
+  if [[ -s "${source_file}" ]]; then
+    docker exec -i "${CONTAINER_NAME}" \
+      sh -c 'umask 077; mkdir -p "$HOME/.config/dolphin-auth"; chmod 700 "$HOME/.config/dolphin-auth"; cat > "$HOME/.config/dolphin-auth/$1"; chmod 600 "$HOME/.config/dolphin-auth/$1"' \
+      sh "${filename}" < "${source_file}"
+  else
+    docker exec "${CONTAINER_NAME}" \
+      sh -c 'rm -f "$HOME/.config/dolphin-auth/$1"' sh "${filename}"
+  fi
+}
+
+sync_container_gdrive_aliases() {
+  {
+    local env_name value
+    for env_name in $(compgen -A variable GDRIVE_ALIAS_); do
+      value="${!env_name}"
+      [[ -n "${value}" ]] || continue
+      printf 'export %s=%q\n' "${env_name}" "${value}"
+    done
+  } | docker exec -i "${CONTAINER_NAME}" \
+    sh -c 'umask 077; mkdir -p "$HOME/.config/dolphin-env"; chmod 700 "$HOME/.config/dolphin-env"; cat > "$HOME/.config/dolphin-env/gdrive-aliases.zsh"; chmod 600 "$HOME/.config/dolphin-env/gdrive-aliases.zsh"'
+}
+
 sync_container_secret "${GITHUB_TOKEN_VALUE}" github.token
 sync_container_secret "${HF_TOKEN_VALUE}" huggingface.token
 sync_container_secret "${WANDB_API_KEY_VALUE}" wandb.key
 sync_container_secret "${DSBA_LITELLM_API_KEY_VALUE}" dsba-litellm.key
 sync_container_secret "${DSBA_PORTAL_TOKEN_VALUE}" dsba-portal.token
+sync_container_secret_file "${HOST_GDRIVE_AUTH_FILE}" google-drive.json
+sync_container_gdrive_aliases
 
 if [[ -n "${GITHUB_TOKEN_VALUE}" ]]; then
   docker exec "${CONTAINER_NAME}" zsh -fc \

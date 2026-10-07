@@ -1,6 +1,6 @@
 # Project Context
 
-Last updated: 2026-10-05
+Last updated: 2026-10-07
 
 ## Research Goal
 
@@ -19,6 +19,9 @@ Last updated: 2026-10-05
 - image는 `~/.codex/config.toml`에 DSBA LiteLLM common provider를, `~/.codex/dsba.config.toml`에 DSBA 전용 model profile을 제공한다.
 - `make_container.sh`는 local-only `runtime.env`의 `DSBA_LITELLM_API_KEY`를 container-local mode 600 key file에 저장하고 `.zshrc`가 로드하게 한다.
 - image는 Codex와 Claude에 DSBA Portal MCP를 등록한다. `make_container.sh`가 `DSBA_PORTAL_TOKEN`을 권한 600 파일로 전달하고 MCP 실행기가 토큰을 읽어 고정된 upstream commit을 `uvx`로 실행한다.
+- image는 고정된 `@piotr-agier/google-drive-mcp@2.12.0`을 Codex와 Claude에 등록하고 Drive, Docs, Sheets, Slides API 도구를 제공한다.
+- `scripts/google_drive_auth.py`는 OAuth client file을 사용해 사용자 인증을 진행하고 로컬 `~/.config/dolphin-auth/google-drive.json`에 권한 600으로 저장한다. `make_container.sh`는 이 파일을 container-local mode 600 파일로 전달한다.
+- `runtime.env`의 `GDRIVE_ALIAS_<NAME>` 값은 Drive 링크다. launcher가 이를 interactive zsh 환경으로 전달하고 `dolphin-gdrive`가 원본 링크를 출력하지 않고 Drive ID와 item type을 반환한다.
 
 ## Current Decisions
 
@@ -27,6 +30,7 @@ Last updated: 2026-10-05
 - Dockerfile/build context와 recreate/no-cache 동작은 env 항목이 아니라 helper script와 명시적 CLI flag로 관리한다.
 - agent는 작업 시작 시 `start --query`, 비사소한 변경 후 record와 `finish`를 사용한다.
 - DSBA provider는 기본 provider로 고정하지 않고 `codex --profile dsba`로만 선택하여 기존 OpenAI 세션 탐색을 유지한다.
+- Google Drive OAuth credential과 alias link는 image와 Git에 넣지 않는다. Drive MCP는 Drive 및 Google Workspace 편집 scope만 요청하고 Calendar scope를 요청하지 않는다.
 
 ## Active Ideas
 
@@ -37,6 +41,7 @@ Last updated: 2026-10-05
 - image build는 GitHub와 여러 upstream installer에 접근해야 한다.
 - BM25S recall은 NumPy를 필요로 하며 의도적인 SQLite fallback은 없다.
 - Docker socket mount는 host daemon 권한을 제공하므로 기본값은 off이며 신뢰된 작업에서만 명시적으로 켠다.
+- Google OAuth consent screen이 Testing 상태이면 refresh token이 7일 후 만료될 수 있다. 사용자는 helper로 다시 인증해야 한다.
 
 ## Next Steps
 
