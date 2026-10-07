@@ -34,78 +34,87 @@ bash make_container.sh
 
 Only machine-specific values belong in `runtime.env`: image name, container
 name, mounts, ports, optional Docker socket access, runtime tokens, and Google
-Drive aliases. The scripts automatically move an existing legacy
+OAuth client credentials. The scripts automatically move an existing legacy
 `config/runtime.env` to this new location without reading or printing its
 content.
 
-## Google Drive MCP
+## Google Workspace MCP
 
-The image registers a Google Drive MCP server for Codex CLI and Claude Code.
-It supports Drive files and folders, plus Google Docs, Sheets, and Slides
-operations. OAuth credentials stay outside the repository and the Docker build
-context.
+The image registers `workspace-mcp==2.0.1` for Codex CLI and Claude Code.
+Only Slides, Calendar, Sheets, Gmail, and Drive tools are enabled. Agents can
+find items by name or use file links and IDs directly.
 
-Create a Google Cloud project, enable the Drive, Docs, Sheets, and Slides APIs,
-add your account as an OAuth test user, then create an OAuth client with the
-Desktop app type. Run the local authorization helper with the downloaded client
-JSON file:
-
-```bash
-python3 scripts/google_drive_auth.py ~/Downloads/oauth-client.json
-```
-
-Run the helper on the machine that will run `make_container.sh`. For a remote
-host, open the SSH tunnel in one terminal, then run the helper on that host in
-a second terminal:
+Create a Google Cloud project and enable the Google Slides, Google Calendar,
+Google Sheets, Gmail, and Google Drive APIs. Configure the OAuth consent screen
+and add your account as a test user if the app is in Testing status. Create an
+OAuth client with the Desktop app type, then put its two values in the local
+`runtime.env`:
 
 ```bash
-ssh -L 8765:localhost:8765 user@server
-python3 scripts/google_drive_auth.py --no-browser --port 8765 /path/to/oauth-client.json
+GOOGLE_OAUTH_CLIENT_ID="YOUR_CLIENT_ID.apps.googleusercontent.com"
+GOOGLE_OAUTH_CLIENT_SECRET="YOUR_CLIENT_SECRET"
+GOOGLE_OAUTH_REFRESH_TOKEN=
 ```
 
-The helper stores the OAuth client and tokens at
-`~/.config/dolphin-auth/google-drive.json` with mode `600`. The container
-launcher copies this file to the container's private auth directory with mode
-`600`. The file is removed from the container when the local file is absent.
-The helper never prints the client secret or tokens.
-
-The OAuth `drive` scope grants broad access to files available to that Google
-account. Aliases are names for the agent to use, not a Google permission limit.
-Agent instructions keep normal work on the aliases the user names. Calendar
-access is not requested.
-
-Add file or folder links to `runtime.env` with a stable uppercase alias:
+The client secret is the app credential, not your Google account password.
+You do not need to obtain a refresh token manually. Run the launcher with its
+Google authorization option to sign in once and grant access:
 
 ```bash
-GDRIVE_ALIAS_RESEARCH_FOLDER="https://drive.google.com/drive/folders/FOLDER_ID"
-GDRIVE_ALIAS_REPORT="https://docs.google.com/document/d/FILE_ID/edit"
+bash make_container.sh --google-auth --no-attach
 ```
 
-The linked items must be accessible to the Google account used during OAuth.
-Alias names may contain uppercase letters, digits, and underscores. Run
-`bash make_container.sh --no-attach` after changing OAuth or alias settings.
-The launcher loads aliases into new and attached zsh commands without recreating
-the container.
+The helper uses a localhost callback, OAuth state, and PKCE. It saves the
+account and tokens outside the repository at
+`~/.config/dolphin-auth/google-workspace.json`, with directory mode `700` and
+file mode `600`. The launcher transfers the client values and token file to
+private container files through stdin. They are not embedded in the image or
+Docker environment configuration. The MCP launcher reads these files even
+from non-interactive agent sessions and automatically refreshes access tokens.
 
-Use `dolphin-gdrive aliases` to view aliases, IDs, and item types, or
-`dolphin-gdrive resolve REPORT` to resolve one alias. These commands never show
-the original links. When an agent receives an alias, it resolves the Drive ID
-and uses the Google Drive MCP tools for listing, downloads, uploads, and edits.
-Folder aliases work as listing roots and upload destinations. File aliases can
-be downloaded or updated. To download a folder, list its files and download the
-requested items. Google-native documents can be exported and edited with the
-corresponding Docs, Sheets, or Slides tools.
+If you already have a refresh token for this OAuth client and all five APIs,
+you may set `GOOGLE_OAUTH_REFRESH_TOKEN` in `runtime.env`. This optional value
+takes precedence over the helper's saved token. It must also have the account
+identity scopes used by the helper. Keep it empty to use automatic token storage.
+After changing the client or adding API permissions, repeat browser consent.
+Remove an old manual refresh token before reauthorizing with the helper.
 
-After updating the image, rebuild it and recreate the container to install the
-MCP server:
+For a remote host, forward the callback port from your local machine:
+
+```bash
+ssh -L 8765:127.0.0.1:8765 user@server
+```
+
+In another terminal on that host, load the env and run the helper at that port:
+
+```bash
+set -a
+source runtime.env
+set +a
+python3 scripts/google_workspace_auth.py --no-browser --port 8765
+bash make_container.sh --no-attach
+```
+
+Open the printed consent URL in your local browser. Desktop clients support
+loopback callbacks; a Web application client must have the exact callback URI
+registered, such as `http://127.0.0.1:8765/oauth2callback`.
+
+The requested scopes allow reading and editing Drive files, Slides, Sheets,
+Calendar events, and Gmail messages and settings. The helper also requests
+Google account identity scopes to select the authorized account. Agents send
+mail, create invitations, share files, or delete items only when the user asks.
+
+Rebuild the image and recreate the container once to install the new MCP server:
 
 ```bash
 bash build_image.sh
 bash make_container.sh --recreate --no-attach
 ```
 
-If the OAuth consent screen remains in Testing status, Google expires refresh
-tokens after seven days. Reauthorize with the helper when that happens.
+Later credential updates only require rerunning `make_container.sh` and
+restarting the agent's MCP session. Empty client values disable the connection
+and remove its container credentials. If the consent screen stays in Testing
+status, refresh tokens may expire after seven days; repeat browser consent.
 
 ## LLM endpoint
 

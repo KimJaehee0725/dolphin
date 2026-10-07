@@ -23,6 +23,7 @@
 
 ### changes
 
+- `history/changes/2026-10-07-163329-google-workspace-env-api.md` - Change - Google Workspace env 인증과 다섯 API 연결로 변경
 - `history/changes/2026-10-07-161048-google-drive-oauth-mcp-alias.md` - Change - Google Drive OAuth MCP와 alias 연결 추가
 - `history/changes/2026-10-05-135853-mac-dsba-portal-mcp-runtime.md` - Change - Mac에 DSBA Portal MCP 연결과 runtime 예시 설명 추가
 - `history/changes/2026-10-05-135315-dolphin-dsba-portal-mcp.md` - Change - Dolphin에 DSBA Portal MCP 연결 추가
@@ -34,7 +35,6 @@
 - `history/changes/2026-09-17-153132-dolphin-attach-shell-and-shared-p10k-configuration.md` - Change - Dolphin attach shell and shared p10k configuration
 - `history/changes/2026-09-04-084921-dolphin-dsba-litellm-codex.md` - Change - Dolphin 이미지에 DSBA LiteLLM Codex 프로필 추가
 - `history/changes/2026-08-14-052224-research-history-dolphin-docker.md` - Change - 단순화된 research history에 맞춰 Dolphin Docker 구성 정리
-- `history/changes/2026-08-03-052448-replace-central-memory-with-local-bm25s-history.md` - Change - Replace central memory with local BM25S history
 
 ### decisions
 

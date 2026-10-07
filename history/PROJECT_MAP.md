@@ -34,6 +34,7 @@ Open this `history/` directory as an Obsidian vault. These links stay repo-relat
 - [[changes/2026-10-05-135315-dolphin-dsba-portal-mcp|Change - Dolphin에 DSBA Portal MCP 연결 추가]]
 - [[changes/2026-10-05-135853-mac-dsba-portal-mcp-runtime|Change - Mac에 DSBA Portal MCP 연결과 runtime 예시 설명 추가]]
 - [[changes/2026-10-07-161048-google-drive-oauth-mcp-alias|Change - Google Drive OAuth MCP와 alias 연결 추가]]
+- [[changes/2026-10-07-163329-google-workspace-env-api|Change - Google Workspace env 인증과 다섯 API 연결로 변경]]
 
 ## daily
 

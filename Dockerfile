@@ -80,8 +80,7 @@ RUN ln -sf "$(command -v fdfind)" /usr/local/bin/fd \
  && ln -sf "$(command -v batcat)" /usr/local/bin/bat
 
 COPY --from=node_runtime /usr/local/ /usr/local/
-COPY scripts/dolphin_gdrive_aliases.py /tmp/dolphin-gdrive-aliases.py
-COPY scripts/dolphin_google_drive_mcp.py /tmp/dolphin-google-drive-mcp.py
+COPY scripts/dolphin_google_workspace_mcp.py /tmp/dolphin-google-workspace-mcp.py
 
 RUN groupadd -g "${GID}" "${USERNAME}" \
  && useradd -m -u "${UID}" -g "${GID}" -s /bin/zsh "${USERNAME}" \
@@ -130,13 +129,13 @@ RUN git init -q /tmp/track-research-history-source \
 
 RUN mkdir -p "${NPM_CONFIG_PREFIX}" \
  && npm config set prefix "${NPM_CONFIG_PREFIX}" \
- && npm install -g @openai/codex @piotr-agier/google-drive-mcp@2.12.0 \
- && codex --version \
- && google-drive-mcp version
+ && npm install -g @openai/codex \
+ && codex --version
 
-RUN install -m 0755 /tmp/dolphin-gdrive-aliases.py "${HOME}/.local/bin/dolphin-gdrive" \
- && install -m 0755 /tmp/dolphin-google-drive-mcp.py "${HOME}/.local/bin/dolphin-google-drive-mcp" \
- && rm -f /tmp/dolphin-gdrive-aliases.py /tmp/dolphin-google-drive-mcp.py
+RUN uv tool install --python 3.12 workspace-mcp==2.0.1 \
+ && workspace-mcp --help >/dev/null \
+ && install -m 0755 /tmp/dolphin-google-workspace-mcp.py "${HOME}/.local/bin/dolphin-google-workspace-mcp" \
+ && rm -f /tmp/dolphin-google-workspace-mcp.py
 
 RUN curl -fsSL https://claude.ai/install.sh | bash \
  && claude --version
@@ -259,8 +258,8 @@ command = "dolphin-dsba-portal-mcp"
 env_vars = ["DSBA_PORTAL_TOKEN"]
 startup_timeout_sec = 120
 
-[mcp_servers.google_drive]
-command = "dolphin-google-drive-mcp"
+[mcp_servers.google_workspace]
+command = "dolphin-google-workspace-mcp"
 startup_timeout_sec = 120
 EOF
 
@@ -282,7 +281,7 @@ exec uvx --from git+https://github.com/DSBA-Lab/server-portal-mcp@eadbab403ca2e7
 EOF
 RUN chmod 0755 "${HOME}/.local/bin/dolphin-dsba-portal-mcp" \
  && claude mcp add --scope user dsba-portal -- dolphin-dsba-portal-mcp \
- && claude mcp add --scope user google-drive -- dolphin-google-drive-mcp
+ && claude mcp add --scope user google-workspace -- dolphin-google-workspace-mcp
 
 RUN cat > "${HOME}/.codex/dsba.config.toml" <<'EOF'
 model = "gpt-5.6-sol"
@@ -375,28 +374,12 @@ function load_dolphin_auth() {
   fi
 }
 
-function load_dolphin_gdrive_aliases() {
-  local alias_file="$HOME/.config/dolphin-env/gdrive-aliases.zsh"
-  local env_name
-
-  for env_name in ${(k)parameters}; do
-    case "$env_name" in
-      GDRIVE_ALIAS_*) unset "$env_name" ;;
-    esac
-  done
-
-  [[ -r "$alias_file" ]] && source "$alias_file"
-}
-
 # The launcher can update credential files after the PID 1 shell starts. Load
 # them before every prompt and command so the first attached command sees them.
 autoload -Uz add-zsh-hook
 add-zsh-hook precmd load_dolphin_auth
 add-zsh-hook preexec load_dolphin_auth
-add-zsh-hook precmd load_dolphin_gdrive_aliases
-add-zsh-hook preexec load_dolphin_gdrive_aliases
 load_dolphin_auth
-load_dolphin_gdrive_aliases
 
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create a local OAuth token for the Dolphin Google Drive MCP server."""
+"""Create a local OAuth token for the Dolphin Google Workspace MCP server."""
 
 from __future__ import annotations
 
@@ -23,13 +23,18 @@ from pathlib import Path
 
 SCOPES = (
     "https://www.googleapis.com/auth/drive",
-    "https://www.googleapis.com/auth/documents",
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/presentations",
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/gmail.modify",
+    "https://www.googleapis.com/auth/gmail.settings.basic",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+    "openid",
 )
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
-DEFAULT_TOKEN_FILE = Path.home() / ".config/dolphin-auth/google-drive.json"
+DEFAULT_TOKEN_FILE = Path.home() / ".config/dolphin-auth/google-workspace.json"
 
 
 class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
@@ -63,7 +68,7 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
 
     def _respond(self, status: int, message: str) -> None:
         body = (
-            "<!doctype html><html><meta charset='utf-8'><title>Google Drive</title>"
+            "<!doctype html><html><meta charset='utf-8'><title>Google Workspace</title>"
             f"<body><p>{message}</p></body></html>"
         ).encode("utf-8")
         self.send_response(status)
@@ -82,18 +87,28 @@ class OAuthCallbackServer(http.server.HTTPServer):
         self.timeout = 1
 
 
-def _read_client(client_file: Path) -> tuple[str, str]:
-    try:
-        data = json.loads(client_file.read_text(encoding="utf-8"))
-        client = data.get("installed") or {}
-        client_id = client.get("client_id")
-        client_secret = client.get("client_secret")
-    except (OSError, json.JSONDecodeError, AttributeError):
-        raise ValueError("Could not read a Google OAuth client credentials JSON file.") from None
-
-    if not isinstance(client_id, str) or not isinstance(client_secret, str):
-        raise ValueError("The OAuth client file must contain client_id and client_secret.")
+def _read_client() -> tuple[str, str]:
+    client_id = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "").strip()
+    client_secret = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", "").strip()
+    if not client_id or not client_secret:
+        raise ValueError("Set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET before authorizing.")
     return client_id, client_secret
+
+
+def _fetch_email(access_token: str) -> str:
+    request = urllib.request.Request(
+        "https://www.googleapis.com/oauth2/v2/userinfo",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            profile = json.load(response)
+        email = profile.get("email", "")
+        if not isinstance(email, str) or "@" not in email:
+            raise ValueError("Missing account email.")
+        return email
+    except (urllib.error.URLError, TimeoutError, ValueError):
+        raise RuntimeError("Could not identify the authorized Google account.") from None
 
 
 def _b64url(value: bytes) -> str:
@@ -168,14 +183,15 @@ def _write_token_file(
     payload = {
         "client_id": client_id,
         "client_secret": client_secret,
+        "email": _fetch_email(str(tokens["access_token"])),
         "access_token": tokens["access_token"],
         "refresh_token": tokens["refresh_token"],
         "expires_at": tokens["expires_at"],
-        "scope": tokens.get("scope", ""),
+        "scope": tokens.get("scope", " ".join(SCOPES)),
         "token_type": tokens.get("token_type", "Bearer"),
     }
     encoded = json.dumps(payload, separators=(",", ":"))
-    descriptor, temporary_path = tempfile.mkstemp(prefix=".google-drive-", dir=token_file.parent)
+    descriptor, temporary_path = tempfile.mkstemp(prefix=".google-workspace-", dir=token_file.parent)
     try:
         os.fchmod(descriptor, 0o600)
         with os.fdopen(descriptor, "w", encoding="utf-8") as output:
@@ -193,9 +209,8 @@ def _write_token_file(
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Authorize Google Drive access and save a local token for Dolphin."
+        description="Authorize Google Workspace access and save a local token for Dolphin."
     )
-    parser.add_argument("oauth_client_json", type=Path, help="Google OAuth Desktop client JSON file")
     parser.add_argument(
         "--port",
         type=int,
@@ -213,7 +228,7 @@ def main() -> int:
         parser.error("--port must be between 0 and 65535")
 
     try:
-        client_id, client_secret = _read_client(args.oauth_client_json)
+        client_id, client_secret = _read_client()
         state = secrets.token_urlsafe(32)
         verifier = _b64url(secrets.token_bytes(32))
         challenge = _b64url(hashlib.sha256(verifier.encode("ascii")).digest())
@@ -253,10 +268,10 @@ def main() -> int:
         )
         _write_token_file(DEFAULT_TOKEN_FILE, client_id, client_secret, tokens)
     except (OSError, RuntimeError, ValueError) as error:
-        print(f"Google Drive authorization failed: {error}", file=sys.stderr)
+        print(f"Google Workspace authorization failed: {error}", file=sys.stderr)
         return 1
 
-    print(f"Google Drive authorization saved to {DEFAULT_TOKEN_FILE}")
+    print(f"Google Workspace authorization saved to {DEFAULT_TOKEN_FILE}")
     print("Run bash make_container.sh to sync the credentials to the container.")
     return 0
 

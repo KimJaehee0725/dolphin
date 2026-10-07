@@ -19,9 +19,10 @@ Last updated: 2026-10-07
 - image는 `~/.codex/config.toml`에 DSBA LiteLLM common provider를, `~/.codex/dsba.config.toml`에 DSBA 전용 model profile을 제공한다.
 - `make_container.sh`는 local-only `runtime.env`의 `DSBA_LITELLM_API_KEY`를 container-local mode 600 key file에 저장하고 `.zshrc`가 로드하게 한다.
 - image는 Codex와 Claude에 DSBA Portal MCP를 등록한다. `make_container.sh`가 `DSBA_PORTAL_TOKEN`을 권한 600 파일로 전달하고 MCP 실행기가 토큰을 읽어 고정된 upstream commit을 `uvx`로 실행한다.
-- image는 고정된 `@piotr-agier/google-drive-mcp@2.12.0`을 Codex와 Claude에 등록하고 Drive, Docs, Sheets, Slides API 도구를 제공한다.
-- `scripts/google_drive_auth.py`는 OAuth client file을 사용해 사용자 인증을 진행하고 로컬 `~/.config/dolphin-auth/google-drive.json`에 권한 600으로 저장한다. `make_container.sh`는 이 파일을 container-local mode 600 파일로 전달한다.
-- `runtime.env`의 `GDRIVE_ALIAS_<NAME>` 값은 Drive 링크다. launcher가 이를 interactive zsh 환경으로 전달하고 `dolphin-gdrive`가 원본 링크를 출력하지 않고 Drive ID와 item type을 반환한다.
+- image는 `workspace-mcp==2.0.1`을 Codex와 Claude에 등록하고 Slides, Calendar, Sheets, Gmail, Drive 도구만 제공한다.
+- `runtime.env`에는 `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, 선택적 `GOOGLE_OAUTH_REFRESH_TOKEN`을 지정한다. Launcher는 이 값을 container-local mode 600 파일로 전달한다.
+- `scripts/google_workspace_auth.py`는 env의 OAuth client 값으로 최초 사용자 동의를 진행하고, account와 token을 저장소 밖의 `~/.config/dolphin-auth/google-workspace.json`에 권한 600으로 저장한다. Launcher의 Google 인증 옵션으로 실행할 수 있다.
+- Google Workspace MCP 실행기는 helper token 또는 명시적 refresh token으로 access token을 갱신하고 account별 private credential store를 제공한다. Resource alias는 사용하지 않는다.
 
 ## Current Decisions
 
@@ -30,7 +31,7 @@ Last updated: 2026-10-07
 - Dockerfile/build context와 recreate/no-cache 동작은 env 항목이 아니라 helper script와 명시적 CLI flag로 관리한다.
 - agent는 작업 시작 시 `start --query`, 비사소한 변경 후 record와 `finish`를 사용한다.
 - DSBA provider는 기본 provider로 고정하지 않고 `codex --profile dsba`로만 선택하여 기존 OpenAI 세션 탐색을 유지한다.
-- Google Drive OAuth credential과 alias link는 image와 Git에 넣지 않는다. Drive MCP는 Drive 및 Google Workspace 편집 scope만 요청하고 Calendar scope를 요청하지 않는다.
+- Google OAuth credential과 token은 image와 Git에 넣지 않는다. OAuth scope는 Slides, Calendar, Sheets, Gmail, Drive와 account identity를 포함한다. 외부 메일 전송, 초대, 공유, 삭제는 사용자 요청에 따라 수행한다.
 
 ## Active Ideas
 

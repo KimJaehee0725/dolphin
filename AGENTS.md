@@ -39,15 +39,11 @@ This repository keeps its research and code history in `history/`, managed by th
   main agent; only the main agent writes records and commits.
 <!-- track-research-history:end -->
 
-## Google Drive aliases
+## Google Workspace
 
-`runtime.env` may define `GDRIVE_ALIAS_<NAME>` values that contain complete
-Google Drive file or folder links. Resolve an alias with
-`dolphin-gdrive resolve <NAME>` before calling the Google Drive MCP tools. The
-command returns the Drive ID and item type without showing the original link.
-Use folder IDs for listing and upload destinations. For a folder download,
-recursively list its files and download the requested items. Use file IDs for
-downloads and edits. Use the matching Docs, Sheets, or Slides tools for
-Google-native documents. Do not use Calendar tools. Do not trash or share Drive
-items unless the user asks. Aliases are references, not access restrictions.
-Do not access other Drive items unless the user asks.
+The Google Workspace MCP provides Slides, Calendar, Sheets, Gmail, and Drive.
+Use file links, IDs, or searches to find the items the user requests.
+OAuth client credentials come from local-only `runtime.env`; do not read,
+print, or expose credentials or cached tokens. No resource aliases are required.
+Send mail, create invitations, share files, or delete items only when the user
+requests the corresponding action. Calendar and Gmail tools are available.
