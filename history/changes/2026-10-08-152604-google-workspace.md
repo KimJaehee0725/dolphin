@@ -39,4 +39,3 @@ runtime.env는 읽거나 복사하지 않았다. 기존 runtime.env.example 삭�
 ## Commits
 
 - `478b26f8ac2b` 2026-10-08 15:26 - Fix Google Workspace wrapper ownership during image build
-
