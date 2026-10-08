@@ -83,7 +83,8 @@ RUN ln -sf "$(command -v fdfind)" /usr/local/bin/fd \
  && ln -sf "$(command -v batcat)" /usr/local/bin/bat
 
 COPY --from=node_runtime /usr/local/ /usr/local/
-COPY scripts/dolphin_google_workspace_mcp.py /tmp/dolphin-google-workspace-mcp.py
+# The non-root install step must be able to remove this file from sticky /tmp.
+COPY --chown=${UID}:${GID} scripts/dolphin_google_workspace_mcp.py /tmp/dolphin-google-workspace-mcp.py
 
 RUN groupadd -g "${GID}" "${USERNAME}" \
  && useradd -m -u "${UID}" -g "${GID}" -s /bin/zsh "${USERNAME}" \
