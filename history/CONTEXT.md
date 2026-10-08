@@ -1,6 +1,6 @@
 # Project Context
 
-Last updated: 2026-10-07
+Last updated: 2026-10-08
 
 ## Research Goal
 
@@ -9,6 +9,7 @@ Last updated: 2026-10-07
 ## Current Architecture Or Structure
 
 - Ubuntu 22.04/CUDA 12.2 image에 Python 3.12, NumPy, Codex, Claude, terminal 도구를 설치한다.
+- 컨테이너 기본 시간대는 `Asia/Seoul`이며 `TZ`, `/etc/localtime`, `/etc/timezone`에 동일하게 지정한다.
 - Tree-sitter CLI는 glibc 2.35 호환 버전 `0.25.10`으로 pin한다.
 - image build 시 검증된 `track-research-history` commit을 `~/.codex/skills/track-research-history`에 설치하고 `REVISION`에 기록한다.
 - image build 시 고정된 `im-not-ai` commit을 `~/.local/share/im-not-ai`에 보관하고 Claude Code 및 Codex CLI에 한국어 윤문 스킬을 연결한다.

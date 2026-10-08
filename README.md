@@ -5,6 +5,7 @@ Docker-based development environment for research and coding agents.
 ## What It Includes
 
 - CUDA 12.2 Ubuntu base image with Node.js, Python 3.12 via `uv`, GitHub CLI, Docker CLI, tmux, zsh, and common terminal tools.
+- Korea Standard Time (`Asia/Seoul`, UTC+09:00) as the container timezone.
 - OpenAI Codex CLI and Claude Code.
 - DSBA Portal MCP configuration for Codex CLI and Claude Code, with runtime token loading.
 - The pinned repository-local `track-research-history` skill with vendored BM25S recall and Obsidian project maps.

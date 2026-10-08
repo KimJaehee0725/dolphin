@@ -16,6 +16,7 @@ ARG GIT_EMAIL="codex@example.com"
 ARG TREE_SITTER_CLI_VERSION=0.25.10
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Seoul
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 
@@ -58,6 +59,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     docker.io \
     ffmpegthumbnailer \
     p7zip-full \
+ && ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime \
+ && printf '%s\n' "${TZ}" > /etc/timezone \
  && locale-gen en_US.UTF-8 \
  && (apt-get purge -y 'libnvidia-*' 'nvidia-*' 'cuda-drivers*' || true) \
  && apt-get autoremove -y \

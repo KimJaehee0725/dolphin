@@ -9,6 +9,7 @@
 
 ### daily
 
+- `history/daily/2026-10-08.md` - Daily Log - 2026-10-08
 - `history/daily/2026-10-07.md` - Daily Log - 2026-10-07
 - `history/daily/2026-10-05.md` - Daily Log - 2026-10-05
 - `history/daily/2026-09-30.md` - Daily Log - 2026-09-30
@@ -23,6 +24,7 @@
 
 ### changes
 
+- `history/changes/2026-10-08-125546-dolphin.md` - Change - Dolphin 컨테이너 기본 시간대를 한국으로 설정
 - `history/changes/2026-10-07-163329-google-workspace-env-api.md` - Change - Google Workspace env 인증과 다섯 API 연결로 변경
 - `history/changes/2026-10-07-161048-google-drive-oauth-mcp-alias.md` - Change - Google Drive OAuth MCP와 alias 연결 추가
 - `history/changes/2026-10-05-135853-mac-dsba-portal-mcp-runtime.md` - Change - Mac에 DSBA Portal MCP 연결과 runtime 예시 설명 추가
@@ -34,7 +36,6 @@
 - `history/changes/2026-09-17-153621-dolphin-root-configuration-layout-and-endpoint-clarification.md` - Change - Dolphin root configuration layout and endpoint clarification
 - `history/changes/2026-09-17-153132-dolphin-attach-shell-and-shared-p10k-configuration.md` - Change - Dolphin attach shell and shared p10k configuration
 - `history/changes/2026-09-04-084921-dolphin-dsba-litellm-codex.md` - Change - Dolphin 이미지에 DSBA LiteLLM Codex 프로필 추가
-- `history/changes/2026-08-14-052224-research-history-dolphin-docker.md` - Change - 단순화된 research history에 맞춰 Dolphin Docker 구성 정리
 
 ### decisions
 
