@@ -6,6 +6,7 @@ status: completed
 tags: [history, change]
 agent: codex
 record_id: chg-2026-10-08-152604-google-workspace
+commits: 478b26f8ac2b
 ---
 # Change - Google Workspace 빌드 임시 파일 삭제 권한 수정
 
@@ -13,6 +14,7 @@ Date: 2026-10-08 15:26 +0000
 Agent: codex
 Status: completed
 Record Id: chg-2026-10-08-152604-google-workspace
+Commits: 478b26f8ac2b
 
 ## Why
 
@@ -36,4 +38,5 @@ runtime.env는 읽거나 복사하지 않았다. 기존 runtime.env.example 삭�
 
 ## Commits
 
--
+- `478b26f8ac2b` 2026-10-08 15:26 - Fix Google Workspace wrapper ownership during image build
+
