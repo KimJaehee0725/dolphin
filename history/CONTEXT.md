@@ -1,6 +1,6 @@
 # Project Context
 
-Last updated: 2026-10-08
+Last updated: 2026-10-27
 
 ## Research Goal
 
@@ -11,7 +11,7 @@ Last updated: 2026-10-08
 - Ubuntu 22.04/CUDA 12.2 image에 Python 3.12, NumPy, Codex, Claude, terminal 도구를 설치한다.
 - 컨테이너 기본 시간대는 `Asia/Seoul`이며 `TZ`, `/etc/localtime`, `/etc/timezone`에 동일하게 지정한다.
 - Tree-sitter CLI는 glibc 2.35 호환 버전 `0.25.10`으로 pin한다.
-- image build 시 검증된 `track-research-history` commit을 `~/.codex/skills/track-research-history`에 설치하고 `REVISION`에 기록한다.
+- image build 시 `track-research-history`의 원격 `main` 최신 payload를 Codex/Claude 두 경로에 동일하게 설치하고 실제 SHA·manifest·hash를 검증한다. `build_image.sh`가 매번 원격 SHA를 동적 캐시 키로 전달하며 설치 계층은 Dockerfile 마지막에 있다.
 - image build 시 고정된 `im-not-ai` commit을 `~/.local/share/im-not-ai`에 보관하고 Claude Code 및 Codex CLI에 한국어 윤문 스킬을 연결한다.
 - image build 시 고정된 `research-slides` commit을 두 CLI에 연결하고 Python 의존성, LibreOffice Impress, NanumSquare 폰트와 fontconfig 이름 매핑을 설치한다.
 - 각 프로젝트의 Git-tracked `history/*.md`가 유일한 durable memory이며, vendored BM25S가 현재 Markdown을 in-memory 검색한다.
@@ -36,7 +36,7 @@ Last updated: 2026-10-08
 
 ## Active Ideas
 
-- `track-research-history`가 새 release/tag를 발행하면 검증 후 `TRACK_RESEARCH_HISTORY_REF`를 함께 갱신한다.
+- 스킬은 고정 SHA를 수동 갱신하지 않고 매 빌드 main을 확인한다. 실제 설치 SHA를 보존하고 기능 smoke를 빌드 단계에서 실행한다.
 
 ## Open Questions And Risks
 
@@ -47,4 +47,8 @@ Last updated: 2026-10-08
 
 ## Next Steps
 
-- 원격 skill revision을 바꿀 때 full image build와 `start`, `finish`, BM25S smoke test를 반복한다.
+- 수정한 설치 단계의 원격 main smoke는 통과했다. 다음 전체 이미지 빌드에서 CUDA·다른 도구 설치까지 통합 확인한다. 이번에는 전체 이미지 빌드를 실행하지 않았다.
+
+## 최신 근거
+
+- [[changes/2026-10-27-003546-dolphin-main-cli-504f32f9ed374ceb]]

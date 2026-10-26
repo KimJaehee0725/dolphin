@@ -108,28 +108,6 @@ RUN uv python install 3.12 \
  && uv venv "${HOME}/.venv" --python 3.12 \
  && uv pip install --python "${HOME}/.venv/bin/python" pip numpy
 
-# Install the repo-local Markdown history skill. It vendors BM25S and keeps all
-# project memory inside each repository's history/ directory.
-ARG TRACK_RESEARCH_HISTORY_REPOSITORY=https://github.com/KimJaehee0725/track-research-history.git
-ARG TRACK_RESEARCH_HISTORY_REF=c90f27c23928c17688fdfa7c3d06bb3e6e593f45
-RUN git init -q /tmp/track-research-history-source \
- && git -C /tmp/track-research-history-source remote add origin \
-      "${TRACK_RESEARCH_HISTORY_REPOSITORY}" \
- && git -C /tmp/track-research-history-source fetch -q --depth 1 origin \
-      "${TRACK_RESEARCH_HISTORY_REF}" \
- && git -C /tmp/track-research-history-source checkout -q --detach FETCH_HEAD \
- && install -d -m 0755 "${HOME}/.codex/skills/track-research-history" \
- && cp -a /tmp/track-research-history-source/SKILL.md \
-      /tmp/track-research-history-source/agents \
-      /tmp/track-research-history-source/references \
-      /tmp/track-research-history-source/scripts \
-      "${HOME}/.codex/skills/track-research-history/" \
- && chmod 0755 "${HOME}/.codex/skills/track-research-history/scripts/history.py" \
- && "${HOME}/.venv/bin/python" \
-      "${HOME}/.codex/skills/track-research-history/scripts/history.py" start --help >/dev/null \
- && printf '%s\n' "${TRACK_RESEARCH_HISTORY_REF}" \
-      > "${HOME}/.codex/skills/track-research-history/REVISION" \
- && rm -rf /tmp/track-research-history-source
 
 RUN mkdir -p "${NPM_CONFIG_PREFIX}" \
  && npm config set prefix "${NPM_CONFIG_PREFIX}" \
@@ -442,5 +420,32 @@ RUN mkdir -p "${HOME}/.local/share/claude-plugins" \
       "${HOME}/.local/share/claude-plugins/codex-plugin-cc" \
  && cd "${HOME}/.local/share/claude-plugins/codex-plugin-cc" \
  && npm ci
+
+COPY --chown=${UID}:${GID} scripts/verify_research_history.py /tmp/dolphin-verify-research-history.py
+# Install the latest main history payload for both agent discovery paths.
+# build_image.sh resolves main on each invocation and supplies a dynamic cache key.
+ARG TRACK_RESEARCH_HISTORY_REPOSITORY=https://github.com/KimJaehee0725/track-research-history.git
+ARG TRACK_RESEARCH_HISTORY_REF=main
+ARG TRACK_RESEARCH_HISTORY_CACHE_KEY=""
+RUN git init -q /tmp/track-research-history-source \
+ && git -C /tmp/track-research-history-source remote add origin \
+      "${TRACK_RESEARCH_HISTORY_REPOSITORY}" \
+ && git -C /tmp/track-research-history-source fetch -q --depth 1 origin \
+      "${TRACK_RESEARCH_HISTORY_REF}" \
+ && git -C /tmp/track-research-history-source checkout -q --detach FETCH_HEAD \
+ && TRACK_RESEARCH_HISTORY_RESOLVED="$(git -C /tmp/track-research-history-source rev-parse HEAD)" \
+ && if [ -n "${TRACK_RESEARCH_HISTORY_CACHE_KEY}" ] \
+        && [ "${TRACK_RESEARCH_HISTORY_RESOLVED}" != "${TRACK_RESEARCH_HISTORY_CACHE_KEY}" ]; then \
+      echo "Research history main changed after build start; rerun build_image.sh." >&2; exit 1; \
+    fi \
+ && "${HOME}/.venv/bin/python" /tmp/track-research-history-source/scripts/install.py \
+      --target "${HOME}/.codex/skills/track-research-history" \
+      --target "${HOME}/.claude/skills/track-research-history" \
+ && "${HOME}/.venv/bin/python" /tmp/dolphin-verify-research-history.py \
+      --codex "${HOME}/.codex/skills/track-research-history" \
+      --claude "${HOME}/.claude/skills/track-research-history" \
+      --revision "${TRACK_RESEARCH_HISTORY_RESOLVED}" \
+ && rm -rf /tmp/track-research-history-source \
+ && rm -f /tmp/dolphin-verify-research-history.py
 
 CMD ["zsh", "-l"]

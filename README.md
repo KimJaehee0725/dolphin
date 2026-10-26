@@ -8,7 +8,7 @@ Docker-based development environment for research and coding agents.
 - Korea Standard Time (`Asia/Seoul`, UTC+09:00) as the container timezone.
 - OpenAI Codex CLI and Claude Code.
 - DSBA Portal MCP configuration for Codex CLI and Claude Code, with runtime token loading.
-- The pinned repository-local `track-research-history` skill with vendored BM25S recall and Obsidian project maps.
+- The latest-main repository-local `track-research-history` skill with vendored BM25S recall and Obsidian project maps.
 - The pinned `im-not-ai` Korean writing skill for Claude Code and Codex CLI.
 - The pinned `research-slides` skill for Claude Code and Codex CLI, with PowerPoint templates, Python dependencies, LibreOffice, and NanumSquare fonts.
 
@@ -145,15 +145,27 @@ running container.
 
 ## Research History
 
-The image installs `track-research-history` under
-`~/.codex/skills/track-research-history`. Every mounted project keeps its own
-Git-tracked `history/` folder; there is no central memory service, SQLite index,
-password mode, SSH RPC, or extra runtime mount.
+The image installs the same latest `main` `track-research-history` payload under both
+`~/.codex/skills/track-research-history` and
+`~/.claude/skills/track-research-history`. Both copies carry matching `REVISION`
+and `INSTALLATION.json` metadata recording the revision actually fetched.
+`build_image.sh` resolves remote `main` on every invocation and passes that SHA as
+a dynamic Docker cache key, so a changed skill invalidates the final install
+layer while preserving earlier tool-install caches.
+If `main` moves between resolution and fetch, the build fails and asks for a retry.
+The build checks matching payload hashes, read-only startup, vendored BM25S
+retrieval, and the file-provenance CLI. Direct `docker build` users must provide
+a fresh `TRACK_RESEARCH_HISTORY_CACHE_KEY` or use `--no-cache` to avoid an older
+cached install layer.
+Every mounted project keeps its own Git-tracked `history/` folder; there is no
+central memory service, SQLite index, password mode, SSH RPC, or extra runtime mount.
 
 ```bash
 python3 ~/.codex/skills/track-research-history/scripts/history.py bootstrap
-python3 ~/.codex/skills/track-research-history/scripts/history.py start --query "current task"
+python3 ~/.codex/skills/track-research-history/scripts/history.py start --brief --query "current task"
 python3 ~/.codex/skills/track-research-history/scripts/history.py search "decision or experiment"
+python3 ~/.codex/skills/track-research-history/scripts/history.py commits --file src/module.py --ref HEAD
+python3 ~/.codex/skills/track-research-history/scripts/history.py --version
 python3 ~/.codex/skills/track-research-history/scripts/history.py finish
 ```
 

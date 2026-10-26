@@ -37,6 +37,7 @@ Open this `history/` directory as an Obsidian vault. These links stay repo-relat
 - [[changes/2026-10-07-163329-google-workspace-env-api|Change - Google Workspace env 인증과 다섯 API 연결로 변경]]
 - [[changes/2026-10-08-125546-dolphin|Change - Dolphin 컨테이너 기본 시간대를 한국으로 설정]]
 - [[changes/2026-10-08-152604-google-workspace|Change - Google Workspace 빌드 임시 파일 삭제 권한 수정]]
+- [[changes/2026-10-27-003546-dolphin-main-cli-504f32f9ed374ceb|Change - Dolphin에서 최신 main 연구 기록 스킬을 두 CLI에 설치하고 캐시 갱신 검증]]
 
 ## daily
 
@@ -52,6 +53,7 @@ Open this `history/` directory as an Obsidian vault. These links stay repo-relat
 - [[daily/2026-10-05|Daily Log - 2026-10-05]]
 - [[daily/2026-10-07|Daily Log - 2026-10-07]]
 - [[daily/2026-10-08|Daily Log - 2026-10-08]]
+- [[daily/2026-10-27|Daily Log - 2026-10-27]]
 
 ## decisions
 
